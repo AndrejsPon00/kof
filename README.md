@@ -23,7 +23,7 @@ kubectl get secret grafana-admin-credentials -o jsonpath="{.data.GF_SECURITY_ADM
 ```
 
 ```bash
-helm repo add kof https://mirantis.github.io/kof/
+helm repo add kof https://k0rdent.github.io/kof/
 helm repo update
 helm upgrade -i kof-mothership kof/kof-mothership -n kof -f demo/demo-mothership-values.yaml
 ```

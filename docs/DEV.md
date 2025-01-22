@@ -53,13 +53,15 @@ make dev-ms-deploy-aws
 Create "storage" managed cluster using KCM
 
 ```bash
-make dev-storage-deploy-aws
+make dev-storage-deploy-cloud  # to deploy using AWS standalone template
+make dev-storage-deploy-cloud CLOUD_CLUSTER_TEMPLATE=aws-eks # to deploy using EKS cluster template
 ```
 
 Create "managed" managed cluster using KCM
 
 ```bash
-make dev-managed-deploy-aws
+make dev-managed-deploy-cloud  # to deploy using AWS standalone template
+make dev-managed-deploy-cloud CLOUD_CLUSTER_TEMPLATE=aws-eks # to deploy using EKS cluster template
 ```
 
 When everything up and running you can connect to grafana using port-forwarding from your "mothership" cluster
