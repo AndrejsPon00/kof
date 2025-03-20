@@ -69,6 +69,7 @@ registry-deploy:
 .PHONY: helm-package
 helm-package: $(CHARTS_PACKAGE_DIR) $(EXTENSION_CHARTS_PACKAGE_DIR)
 	rm -rf $(CHARTS_PACKAGE_DIR)
+	chmod 777 $(CHARTS_PACKAGE_DIR)
 	@make $(patsubst %,package-chart-%,$(TEMPLATE_FOLDERS))
 
 .PHONY: helm-push
