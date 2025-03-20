@@ -12,14 +12,12 @@ $(EXTENSION_CHARTS_PACKAGE_DIR): | $(LOCALBIN)
 $(CHARTS_PACKAGE_DIR): | $(LOCALBIN)
 	rm -rf $(CHARTS_PACKAGE_DIR)
 	mkdir -p $(CHARTS_PACKAGE_DIR)
-
 CONTAINER_TOOL ?= docker
 KIND_NETWORK ?= kind
 REGISTRY_NAME ?= kof
 REGISTRY_PORT ?= 8080
 REGISTRY_REPO ?= http://127.0.0.1:$(REGISTRY_PORT)
 REGISTRY_IS_OCI = $(shell echo $(REGISTRY_REPO) | grep -q oci && echo true || echo false)
-
 TEMPLATE_FOLDERS = $(patsubst $(TEMPLATES_DIR)/%,%,$(wildcard $(TEMPLATES_DIR)/*))
 
 USER_EMAIL=$(shell git config user.email)

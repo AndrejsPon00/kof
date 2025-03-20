@@ -56,3 +56,4 @@ istiod:
       name: ca-root-cert
   env:
     ENABLE_CA_SERVER: false
+    test: test
