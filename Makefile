@@ -57,9 +57,8 @@ registry-deploy:
 		echo "Starting new local registry container $(REGISTRY_NAME)"; \
 		$(CONTAINER_TOOL) run -d --restart=always -p "127.0.0.1:$(REGISTRY_PORT):8080" --network bridge \
 			--name "$(REGISTRY_NAME)" \
-			-v /tmp/charts:/charts \
 			-e STORAGE=local \
-			-e STORAGE_LOCAL_ROOTDIR=/charts \
+			-e STORAGE_LOCAL_ROOTDIR=/var/tmp \
 			ghcr.io/helm/chartmuseum:v0.16.2 ;\
 	fi; \
 	if [ "$$($(CONTAINER_TOOL) inspect -f='{{json .NetworkSettings.Networks.$(KIND_NETWORK)}}' $(REGISTRY_NAME))" = 'null' ]; then \
@@ -69,7 +68,6 @@ registry-deploy:
 .PHONY: helm-package
 helm-package: $(CHARTS_PACKAGE_DIR) $(EXTENSION_CHARTS_PACKAGE_DIR)
 	rm -rf $(CHARTS_PACKAGE_DIR)
-	chmod 777 $(CHARTS_PACKAGE_DIR)
 	@make $(patsubst %,package-chart-%,$(TEMPLATE_FOLDERS))
 
 .PHONY: helm-push
