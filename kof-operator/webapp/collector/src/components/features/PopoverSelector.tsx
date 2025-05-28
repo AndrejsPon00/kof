@@ -99,8 +99,7 @@ const PopoverSelector = ({
     id,
     addFilter,
     filterFn,
-    onSelectionChange,
-    removeFilter,
+    onSelectionChange
   ]);
 
   return (
