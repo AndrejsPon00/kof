@@ -28,6 +28,6 @@ const TargetStats = ({ clusters }: TargetStatsProps): JSX.Element => {
       </p>
     </div>
   );
-};
+}
 
 export default TargetStats;
