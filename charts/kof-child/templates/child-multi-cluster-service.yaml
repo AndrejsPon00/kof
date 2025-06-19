@@ -18,6 +18,12 @@ spec:
           kind: ConfigMap
           name: kof-cluster-config-{{`{{ .Cluster.metadata.name }}`}}
           namespace: {{ .Values.kcm.namespace }}
+      - resource:
+          apiVersion: cluster.x-k8s.io/v1beta1
+          kind: Cluster
+          name: "{{`{{ .Cluster.metadata.name }}`}}"
+          namespace: "{{`{{ .Cluster.metadata.namespace }}`}}"
+        identifier: MyCluster
 
     services:
       {{- $version := .Chart.Version | replace "." "-" }}

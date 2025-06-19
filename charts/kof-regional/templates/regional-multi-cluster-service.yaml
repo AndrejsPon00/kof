@@ -103,3 +103,10 @@ spec:
                 defaultClusterId: %q
           ` .Cluster.metadata.name .Cluster.metadata.name | fromYaml {{`}}`}}
           {{`{{ mergeOverwrite $collectorsValuesHere $collectorsValuesFromHelm $collectorsValuesFromAnnotation | toYaml | nindent 4 }}`}}
+    templateResourceRefs:
+      - resource:
+          apiVersion: cluster.x-k8s.io/v1beta1
+          kind: Cluster
+          name: "{{`{{ .Cluster.metadata.name }}`}}"
+          namespace: "{{`{{ .Cluster.metadata.namespace }}`}}"
+        identifier: MyCluster    
