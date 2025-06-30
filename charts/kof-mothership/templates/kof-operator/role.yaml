@@ -37,6 +37,8 @@ rules:
   - grafanadatasources
   - promxyservergroups
   - clusterdeployments
+  - multiclusterservices
+  - statemanagementproviders
   - profiles
   verbs:
   - create
