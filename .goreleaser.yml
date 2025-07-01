@@ -1,6 +1,6 @@
 version: 2
 
-project_name: kof-operator-controller
+project_name: kof-operator
 
 # before:
 #   hooks:
@@ -27,7 +27,7 @@ builds:
       - netgo
     builder: go
 
-  - id: arm_and_arm64
+  - id: arm64
     env:
       - CGO_ENABLED=0
       - GO111MODULE=on
@@ -48,74 +48,68 @@ builds:
     builder: go
 
 dockers:
-  - id: docker_image
+  - id: linux-amd64
     goos: linux
+    goarch: amd64
     image_templates:
-      - "{{ .Env.IMAGE_REPO }}:{{ .Env.VERSION }}"
-      - "{{ .Env.IMAGE_REPO }}:latest"
+      - "{{ .Env.IMAGE_REPO }}:{{ .Env.VERSION }}-amd64"
+      - "{{ .Env.IMAGE_REPO }}:latest-amd64"
     skip_push: false
     dockerfile: "./kof-operator/goreleaser.dockerfile"
     use: buildx
     ids:
       - amd64
-      - arm_and_arm64
     build_flag_templates:
       - --label=org.opencontainers.image.title="{{ .ProjectName }} - k0rdent Observability and FinOps"
       - --label=org.opencontainers.image.description="Image with k0rdent Observability and FinOps binary"
       - --label=org.opencontainers.image.url=https://github.com/andrejsPon00/kof
       - --label=org.opencontainers.image.source=https://github.com/andrejsPon00/kof
+      # - --label=org.opencontainers.image.url=https://github.com/k0rdent/kof
+      # - --label=org.opencontainers.image.source=https://github.com/k0rdent/kof
       - --label=org.opencontainers.image.version={{ .Env.VERSION }}
       - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
       - --label=org.opencontainers.image.licenses=Apache-2.0
+      - --platform=linux/amd64
 
-  # - id: linux-amd64
-  #   goos: linux
-  #   goarch: amd64
-  #   image_templates:
-  #     - "{{ .Env.IMAGE_REPO }}:{{ .Env.VERSION }}"
-  #     - "{{ .Env.IMAGE_REPO }}:latest"
-  #   skip_push: false
-  #   dockerfile: "./kof-operator/goreleaser.dockerfile"
-  #   use: buildx
-  #   ids:
-  #     - amd64
-  #   build_flag_templates:
-  #     - --label=org.opencontainers.image.title="{{ .ProjectName }} - k0rdent Observability and FinOps"
-  #     - --label=org.opencontainers.image.description="Image with k0rdent Observability and FinOps binary"
-  #     - --label=org.opencontainers.image.url=https://github.com/andrejsPon00/kof
-  #     - --label=org.opencontainers.image.source=https://github.com/andrejsPon00/kof
-  #     # - --label=org.opencontainers.image.url=https://github.com/k0rdent/kof
-  #     # - --label=org.opencontainers.image.source=https://github.com/k0rdent/kof
-  #     - --label=org.opencontainers.image.version={{ .Env.VERSION }}
-  #     - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
-  #     - --label=org.opencontainers.image.revision={{ .FullCommit }}
-  #     - --label=org.opencontainers.image.licenses=Apache-2.0
-  #     - --platform=linux/amd64
+  - id: linux-arm64
+    goos: linux
+    goarch: arm64
+    image_templates:
+      - "{{ .Env.IMAGE_REPO }}:{{ .Env.VERSION }}-arm64"
+      - "{{ .Env.IMAGE_REPO }}:latest-arm64"
+    skip_push: false
+    dockerfile: "./kof-operator/goreleaser.dockerfile"
+    use: buildx
+    ids:
+      - arm64
+    build_flag_templates:
+      - --label=org.opencontainers.image.title="{{ .ProjectName }} - k0rdent Observability and FinOps"
+      - --label=org.opencontainers.image.description="Image with k0rdent Observability and FinOps binary"
+      - --label=org.opencontainers.image.url=https://github.com/andrejsPon00/kof
+      - --label=org.opencontainers.image.source=https://github.com/andrejsPon00/kof
+      # - --label=org.opencontainers.image.url=https://github.com/k0rdent/kof
+      # - --label=org.opencontainers.image.source=https://github.com/k0rdent/kof
+      - --label=org.opencontainers.image.version={{ .Env.VERSION }}
+      - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses=Apache-2.0
+      - --platform=linux/arm64/v8
 
-  # - id: linux-arm64
-  #   goos: linux
-  #   goarch: arm64
-  #   image_templates:
-  #     - "{{ .Env.IMAGE_REPO }}:{{ .Env.VERSION }}-arm64v8"
-  #     - "{{ .Env.IMAGE_REPO }}:latest-arm64v8"
-  #   skip_push: false
-  #   dockerfile: "./kof-operator/goreleaser.dockerfile"
-  #   use: buildx
-  #   ids:
-  #     - arm_and_arm64
-  #   build_flag_templates:
-  #     - --label=org.opencontainers.image.title="{{ .ProjectName }} - k0rdent Observability and FinOps"
-  #     - --label=org.opencontainers.image.description="Image with k0rdent Observability and FinOps binary"
-  #     - --label=org.opencontainers.image.url=https://github.com/andrejsPon00/kof
-  #     - --label=org.opencontainers.image.source=https://github.com/andrejsPon00/kof
-  #     # - --label=org.opencontainers.image.url=https://github.com/k0rdent/kof
-  #     # - --label=org.opencontainers.image.source=https://github.com/k0rdent/kof
-  #     - --label=org.opencontainers.image.version={{ .Env.VERSION }}
-  #     - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
-  #     - --label=org.opencontainers.image.revision={{ .FullCommit }}
-  #     - --label=org.opencontainers.image.licenses=Apache-2.0
-  #     - --platform=linux/arm64/v8
+docker_manifests:
+  - name_template: "{{ .Env.IMAGE_REPO }}:{{ .Env.VERSION }}"
+    image_templates:
+      - "{{ .Env.IMAGE_REPO }}:{{ .Env.VERSION }}-amd64"
+      - "{{ .Env.IMAGE_REPO }}:{{ .Env.VERSION }}-arm64"
+    skip_push: false
+    use: docker
+
+  - name_template: "{{ .Env.IMAGE_REPO }}:latest"
+    image_templates:
+      - "{{ .Env.IMAGE_REPO }}:latest-amd64"
+      - "{{ .Env.IMAGE_REPO }}:latest-arm64"
+    skip_push: false
+    use: docker
 
 release:
   github:
