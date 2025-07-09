@@ -31,7 +31,6 @@ import (
 	istio "github.com/k0rdent/kof/kof-operator/internal/controller/istio"
 	"github.com/k0rdent/kof/kof-operator/internal/controller/istio/cert"
 	remotesecret "github.com/k0rdent/kof/kof-operator/internal/controller/istio/remote-secret"
-	"github.com/k0rdent/kof/kof-operator/internal/controller/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	sveltosv1beta1 "github.com/projectsveltos/addon-controller/api/v1beta1"
@@ -43,52 +42,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-const defaultNamespace = "default"
-
-var _ = Describe("ClusterDeployment Controller", func() {
+var _ = Describe("RegionalConfigMap Controller", func() {
 	Context("When reconciling a resource", func() {
 		ctx := context.Background()
 		var clusterDeploymentReconciler *ClusterDeploymentReconciler
 		var regionalClusterConfigmapReconciler *RegionalClusterConfigMapReconciler
 
-		// regional ClusterDeployment
-
-		const regionalClusterDeploymentName = "test-regional"
-
-		regionalClusterDeploymentNamespacedName := types.NamespacedName{
-			Name:      regionalClusterDeploymentName,
-			Namespace: defaultNamespace,
-		}
+		const regionalClusterDeploymentName = "test-regional-cm"
 
 		regionalClusterConfigmapNamespacedName := types.NamespacedName{
-			Name:      "kof-" + regionalClusterDeploymentName,
-			Namespace: defaultNamespace,
-		}
-
-		regionalClusterDeploymentLabels := map[string]string{
-			KofClusterRoleLabel: "regional",
-		}
-
-		regionalClusterDeploymentAnnotations := map[string]string{}
-
-		regionalClusterDeploymentConfig := fmt.Sprintf(`{
-			"region": "us-east-2",
-			"clusterAnnotations": {"%s": "%s"}
-		}`, KofRegionalDomainAnnotation, "test-aws-ue2.kof.example.com")
-
-		promxyServerGroupNamespacedName := types.NamespacedName{
-			Name:      regionalClusterDeploymentName + "-metrics",
-			Namespace: defaultNamespace,
-		}
-
-		grafanaDatasourceNamespacedName := types.NamespacedName{
-			Name:      regionalClusterDeploymentName + "-logs",
+			Name:      GetRegionalClusterConfigMapName(regionalClusterDeploymentName),
 			Namespace: defaultNamespace,
 		}
 
 		// child ClusterDeployment
 
-		const childClusterDeploymentName = "test-child"
+		const childClusterDeploymentName = "test-child-cm"
 
 		childClusterDeploymentNamespacedName := types.NamespacedName{
 			Name:      childClusterDeploymentName,
@@ -98,7 +67,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 		childClusterDeploymentLabels := map[string]string{
 			IstioRoleLabel:              "child",
 			KofClusterRoleLabel:         "child",
-			KofRegionalClusterNameLabel: "test-regional",
+			KofRegionalClusterNameLabel: regionalClusterDeploymentName,
 		}
 
 		childClusterDeploymentAnnotations := map[string]string{}
@@ -108,20 +77,20 @@ var _ = Describe("ClusterDeployment Controller", func() {
 		// child cluster ConfigMap
 
 		childClusterConfigMapNamespacedName := types.NamespacedName{
-			Name:      "kof-cluster-config-test-child", // prefix + child cluster name
+			Name:      "kof-cluster-config-test-child-cm", // prefix + child cluster name
 			Namespace: defaultNamespace,
 		}
 
 		// istio child
 
-		const clusterCertificateName = "kof-istio-test-child-ca"
+		const clusterCertificateName = "kof-istio-test-child-cm-ca"
 
 		clusterCertificateNamespacedName := types.NamespacedName{
 			Name:      clusterCertificateName,
 			Namespace: istio.IstioSystemNamespace,
 		}
 
-		const secretName = "test-child-kubeconfig"
+		const secretName = "test-child-cm-kubeconfig"
 
 		kubeconfigSecretNamespacedName := types.NamespacedName{
 			Name:      secretName,
@@ -138,6 +107,49 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			Namespace: defaultNamespace,
 		}
 
+		// create regional cluster configmap
+
+		createRegionalClusterConfigMap := func(
+			name,
+			namespace,
+			istioRole,
+			readMetricsEndpoint,
+			writeMetricsEndpoint,
+			readLogsEndpoint,
+			writeLogsEndpoint,
+			writeTracesEndpoint,
+			cloud,
+			awsRegion,
+			azureLocation,
+			openstackRegion,
+			vshereDatacenter string,
+		) {
+			configMap := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      GetRegionalClusterConfigMapName(name),
+					Namespace: namespace,
+					Labels: map[string]string{
+						"k0rdent.mirantis.com/kof-regional-cluster": name,
+					},
+				},
+				Data: map[string]string{
+					RegionalClusterNameKey:      name,
+					RegionalClusterNamespaceKey: defaultNamespace,
+					RegionalIstioRoleKey:        istioRole,
+					RegionalClusterCloudKey:     cloud,
+					ReadMetricsKey:              readMetricsEndpoint,
+					WriteMetricsKey:             writeMetricsEndpoint,
+					ReadLogsKey:                 readLogsEndpoint,
+					WriteLogsKey:                writeLogsEndpoint,
+					WriteTracesKey:              writeTracesEndpoint,
+					AwsRegionKey:                awsRegion,
+					AzureLocationKey:            azureLocation,
+					OpenstackRegionKey:          openstackRegion,
+					VSphereDatacenterKey:        vshereDatacenter,
+				},
+			}
+			Expect(k8sClient.Create(ctx, configMap)).To(Succeed())
+		}
 		// createClusterDeployment
 
 		createClusterDeployment := func(
@@ -199,6 +211,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 		// before each test case
 
 		BeforeEach(func() {
+
 			clusterDeploymentReconciler = &ClusterDeploymentReconciler{
 				Client:              k8sClient,
 				Scheme:              k8sClient.Scheme(),
@@ -225,13 +238,19 @@ var _ = Describe("ClusterDeployment Controller", func() {
 				Expect(k8sClient.Create(ctx, certNamespace)).To(Succeed())
 			}
 
-			By("creating regional ClusterDeployment")
-			createClusterDeployment(
+			By("creating regional cluster configMap")
+			createRegionalClusterConfigMap(
 				regionalClusterDeploymentName,
 				defaultNamespace,
-				regionalClusterDeploymentLabels,
-				regionalClusterDeploymentAnnotations,
-				regionalClusterDeploymentConfig,
+				"",
+				"https://vmauth.test-aws-ue2.kof.example.com/vm/select/0/prometheus",
+				"https://vmauth.test-aws-ue2.kof.example.com/vm/insert/0/prometheus/api/v1/write",
+				"https://vmauth.test-aws-ue2.kof.example.com/vls/select/opentelemetry/v1/logs",
+				"https://vmauth.test-aws-ue2.kof.example.com/vli/insert/opentelemetry/v1/logs",
+				"https://jaeger.test-aws-ue2.kof.example.com/collector",
+				"aws",
+				"us-east-2",
+				"", "", "",
 			)
 
 			By("creating child ClusterDeployment")
@@ -251,23 +270,6 @@ var _ = Describe("ClusterDeployment Controller", func() {
 
 		AfterEach(func() {
 			cd := &kcmv1beta1.ClusterDeployment{}
-
-			if err := k8sClient.Get(ctx, regionalClusterDeploymentNamespacedName, cd); err == nil {
-				By("Cleanup regional ClusterDeployment")
-				Expect(k8sClient.Delete(ctx, cd)).To(Succeed())
-			}
-
-			promxyServerGroup := &kofv1beta1.PromxyServerGroup{}
-			if err := k8sClient.Get(ctx, promxyServerGroupNamespacedName, promxyServerGroup); err == nil {
-				By("Cleanup regional PromxyServerGroup")
-				Expect(k8sClient.Delete(ctx, promxyServerGroup)).To(Succeed())
-			}
-
-			grafanaDatasource := &grafanav1beta1.GrafanaDatasource{}
-			if err := k8sClient.Get(ctx, grafanaDatasourceNamespacedName, grafanaDatasource); err == nil {
-				By("Cleanup regional GrafanaDatasource")
-				Expect(k8sClient.Delete(ctx, grafanaDatasource)).To(Succeed())
-			}
 
 			if err := k8sClient.Get(ctx, childClusterDeploymentNamespacedName, cd); err == nil {
 				By("Cleanup child ClusterDeployment")
@@ -308,13 +310,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 		// test cases
 
 		It("should successfully reconcile the CA resource", func() {
-			By("Reconciling the created resource")
 			_, err := clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterDeploymentNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			_, err = clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: childClusterDeploymentNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -358,8 +354,8 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			err = k8sClient.Status().Update(ctx, clusterDeployment)
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterDeploymentNamespacedName,
+			_, err = regionalClusterConfigmapReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: regionalClusterConfigmapNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
@@ -400,8 +396,8 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			err := k8sClient.Get(ctx, childClusterDeploymentNamespacedName, clusterDeployment)
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterDeploymentNamespacedName,
+			_, err = regionalClusterConfigmapReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: regionalClusterConfigmapNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
@@ -427,8 +423,8 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 			cdUID := cd.GetUID()
 
-			_, err = clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterDeploymentNamespacedName,
+			_, err = regionalClusterConfigmapReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: regionalClusterConfigmapNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
@@ -472,8 +468,8 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			err := k8sClient.Get(ctx, childClusterDeploymentNamespacedName, clusterDeployment)
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterDeploymentNamespacedName,
+			_, err = regionalClusterConfigmapReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: regionalClusterConfigmapNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
@@ -488,55 +484,61 @@ var _ = Describe("ClusterDeployment Controller", func() {
 		})
 
 		DescribeTable("should create PromxyServerGroup and GrafanaDatasource for regional cluster", func(
-			regionalClusterDeploymentLabels map[string]string,
-			regionalClusterDeploymentAnnotations map[string]string,
-			regionalClusterDeploymentConfig string,
-			expectedMetricsScheme string,
-			expectedMetricsTarget string,
+			istioRole,
+			cloud,
+			awsRegion,
+			azureLocation,
+			openstackRegion,
+			vshereDatacenter,
+			expectedMetricsScheme,
+			expectedMetricsTarget,
 			expectedMetricsPathPrefix string,
 			expectedMetricsHttpConfig kofv1beta1.HTTPClientConfig,
 			expectedGrafanaDatasourceURL string,
 			expectedGrafanaDatasourceJsonData string,
 		) {
 			By("creating regional ClusterDeployment with labels and config from the table")
-			const regionalClusterDeploymentName = "test-regional-from-table"
-
-			regionalClusterDeploymentNamespacedName := types.NamespacedName{
-				Name:      regionalClusterDeploymentName,
-				Namespace: defaultNamespace,
-			}
+			const tableRegionalClusterDeploymentName = "test-regional-from-table-cm"
 
 			regionalClusterConfigmapNamespacedName := types.NamespacedName{
-				Name:      GetRegionalClusterConfigMapName(regionalClusterDeploymentName),
+				Name:      GetRegionalClusterConfigMapName(tableRegionalClusterDeploymentName),
 				Namespace: defaultNamespace,
 			}
 
 			promxyServerGroupNamespacedName := types.NamespacedName{
-				Name:      regionalClusterDeploymentName + "-metrics",
-				Namespace: defaultNamespace,
+				Name:      tableRegionalClusterDeploymentName + "-metrics",
+				Namespace: ReleaseNamespace,
 			}
 
 			grafanaDatasourceNamespacedName := types.NamespacedName{
-				Name:      regionalClusterDeploymentName + "-logs",
-				Namespace: defaultNamespace,
+				Name:      tableRegionalClusterDeploymentName + "-logs",
+				Namespace: ReleaseNamespace,
 			}
 
-			secretName := regionalClusterDeploymentName + "-kubeconfig"
+			secretName := tableRegionalClusterDeploymentName + "-kubeconfig"
 			createSecret(secretName)
 
-			createClusterDeployment(
-				regionalClusterDeploymentName,
+			createRegionalClusterConfigMap(
+				tableRegionalClusterDeploymentName,
 				defaultNamespace,
-				regionalClusterDeploymentLabels,
-				regionalClusterDeploymentAnnotations,
-				regionalClusterDeploymentConfig,
+				istioRole,
+				"https://vmauth.test-aws-ue2.kof.example.com/vm/select/0/prometheus",
+				"https://vmauth.test-aws-ue2.kof.example.com/vm/insert/0/prometheus/api/v1/write",
+				expectedGrafanaDatasourceURL,
+				"https://vmauth.test-aws-ue2.kof.example.com/vli/insert/opentelemetry/v1/logs",
+				"https://jaeger.test-aws-ue2.kof.example.com/collector",
+				cloud,
+				awsRegion,
+				azureLocation,
+				openstackRegion,
+				vshereDatacenter,
 			)
 
 			DeferCleanup(func() {
-				regionalClusterDeployment := &kcmv1beta1.ClusterDeployment{}
-				if err := k8sClient.Get(ctx, regionalClusterDeploymentNamespacedName, regionalClusterDeployment); err == nil {
-					By("cleanup regional ClusterDeployment")
-					Expect(k8sClient.Delete(ctx, regionalClusterDeployment)).To(Succeed())
+				regionalClusterConfigMap := &corev1.ConfigMap{}
+				if err := k8sClient.Get(ctx, regionalClusterConfigmapNamespacedName, regionalClusterConfigMap); err == nil {
+					By("cleanup regional cluster configMap")
+					Expect(k8sClient.Delete(ctx, regionalClusterConfigMap)).To(Succeed())
 				}
 
 				kubeconfigSecretNamespacedName := types.NamespacedName{
@@ -562,13 +564,8 @@ var _ = Describe("ClusterDeployment Controller", func() {
 				}
 			})
 
-			By("reconciling regional ClusterDeployment")
-			_, err := clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterDeploymentNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			_, err = regionalClusterConfigmapReconciler.Reconcile(ctx, reconcile.Request{
+			By("reconciling regional cluster ConfigMap")
+			_, err := regionalClusterConfigmapReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: regionalClusterConfigmapNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -595,8 +592,12 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			/*
 				Entry(
 					description,
-					regionalClusterDeploymentLabels,
-					regionalClusterDeploymentConfig,
+					istioRole,
+					cloud,
+					awsRegion,
+					azureLocation,
+					openstackRegion,
+					vshereDatacenter,
 					expectedMetricsScheme,
 					expectedMetricsTarget,
 					expectedMetricsPathPrefix,
@@ -607,14 +608,10 @@ var _ = Describe("ClusterDeployment Controller", func() {
 
 			Entry(
 				"Default endpoints",
-				map[string]string{KofClusterRoleLabel: "regional"},
-				map[string]string{},
-				fmt.Sprintf(`{
-					"region": "us-east-2",
-					"clusterAnnotations": {"%s": "%s"}
-				}`,
-					KofRegionalDomainAnnotation, "test-aws-ue2.kof.example.com",
-				),
+				"",
+				"aws",
+				"us-east-2",
+				"", "", "",
 				"https",
 				"vmauth.test-aws-ue2.kof.example.com:443",
 				"/vm/select/0/prometheus",
@@ -630,62 +627,32 @@ var _ = Describe("ClusterDeployment Controller", func() {
 				},
 				"https://vmauth.test-aws-ue2.kof.example.com/vls", "",
 			),
-
-			Entry(
-				"Istio endpoints",
-				map[string]string{
-					KofClusterRoleLabel: "regional",
-					IstioRoleLabel:      "child",
-				},
-				map[string]string{},
-				`{"region": "us-east-2"}`,
-				"http",
-				"test-regional-from-table-vmselect:8481",
-				"/select/0/prometheus",
-				kofv1beta1.HTTPClientConfig{
-					DialTimeout: defaultDialTimeout,
-					TLSConfig: kofv1beta1.TLSConfig{
-						InsecureSkipVerify: false,
+			/*
+				Entry(
+					"Istio endpoints",
+					"child",
+					"aws",
+					"us-east-2",
+					"", "", "",
+					"https",
+					"vmauth.test-aws-ue2.kof.example.com:443",
+					"/vm/select/0/prometheus",
+					kofv1beta1.HTTPClientConfig{
+						DialTimeout: defaultDialTimeout,
+						TLSConfig: kofv1beta1.TLSConfig{
+							InsecureSkipVerify: false,
+						},
+						BasicAuth: kofv1beta1.BasicAuth{},
 					},
-					BasicAuth: kofv1beta1.BasicAuth{},
-				},
-				"http://test-regional-from-table-logs-select:9471", "",
-			),
-
-			Entry(
-				"Custom endpoints with http config",
-				map[string]string{KofClusterRoleLabel: "regional"},
-				map[string]string{KofRegionalHTTPClientConfigAnnotation: `{"dial_timeout": "10s", "tls_config": {"insecure_skip_verify": true}}`},
-				fmt.Sprintf(`{
-					"region": "us-east-2",
-					"clusterAnnotations": {"%s": "%s", "%s": "%s", "%s": "%s"}
-				}`,
-					ReadMetricsAnnotation, "https://vmauth.custom.example.com/foo/prometheus",
-					ReadLogsAnnotation, "https://vmauth.custom.example.com/vls",
-					KofRegionalDomainAnnotation, "test-aws-ue2.kof.example.com",
+					"http://test-regional-from-table-logs-select:9471", "",
 				),
-				"https",
-				"vmauth.custom.example.com:443",
-				"/foo/prometheus",
-				kofv1beta1.HTTPClientConfig{
-					DialTimeout: metav1.Duration{Duration: time.Second * 10},
-					TLSConfig: kofv1beta1.TLSConfig{
-						InsecureSkipVerify: true,
-					},
-					BasicAuth: kofv1beta1.BasicAuth{
-						CredentialsSecretName: "storage-vmuser-credentials",
-						UsernameKey:           "username",
-						PasswordKey:           "password",
-					},
-				},
-				"https://vmauth.custom.example.com/vls", `{"tlsSkipVerify": true, "timeout": "10"}`,
-			),
+			*/
 		)
 
 		It("should create ConfigMap for child cluster", func() {
-			By("reconciling regional ClusterDeployment")
-			_, err := clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterDeploymentNamespacedName,
+			By("reconciling regional cluster ConfigMap")
+			_, err := regionalClusterConfigmapReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: regionalClusterConfigmapNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
@@ -699,7 +666,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			configMap := &corev1.ConfigMap{}
 			err = k8sClient.Get(ctx, childClusterConfigMapNamespacedName, configMap)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(configMap.Data[RegionalClusterNameKey]).To(Equal("test-regional"))
+			Expect(configMap.Data[RegionalClusterNameKey]).To(Equal(regionalClusterDeploymentName))
 			Expect(configMap.Data[ReadMetricsKey]).To(Equal(
 				"https://vmauth.test-aws-ue2.kof.example.com/vm/select/0/prometheus",
 			))
@@ -714,223 +681,19 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			))
 		})
 
-		It("should update the ConfigMap when regional cluster annotation changes", func() {
-			By("reconciling regional ClusterDeployment")
-			_, err := clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterDeploymentNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			By("reconciling child ClusterDeployment")
-			_, err = clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: childClusterDeploymentNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			By("checking if ConfigMap created")
-			configMap := &corev1.ConfigMap{}
-			err = k8sClient.Get(ctx, childClusterConfigMapNamespacedName, configMap)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("updating cluster annotation")
-			clusterDeployment := &kcmv1beta1.ClusterDeployment{}
-			err = k8sClient.Get(ctx, regionalClusterDeploymentNamespacedName, clusterDeployment)
-			Expect(err).NotTo(HaveOccurred())
-
-			newDomain := "new-domain.kof.example.com"
-			newConfig := fmt.Sprintf(`{
-				"region": "us-east-2",
-				"clusterAnnotations": {"%s": "%s"}
-			}`, KofRegionalDomainAnnotation, newDomain)
-
-			clusterDeployment.Spec.Config = &apiextensionsv1.JSON{Raw: []byte(newConfig)}
-			err = k8sClient.Update(ctx, clusterDeployment)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("reconciling regional ClusterDeployment")
-			_, err = clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterDeploymentNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			By("reconciling regional cluster configmap")
-			_, err = regionalClusterConfigmapReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterConfigmapNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			By("checking if child ConfigMap is updated")
-			updatedConfigMap := &corev1.ConfigMap{}
-			err = k8sClient.Get(ctx, childClusterConfigMapNamespacedName, updatedConfigMap)
-
-			expectedNewWriteMetricsValue := fmt.Sprintf(defaultEndpoints[WriteMetricsAnnotation], newDomain)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(updatedConfigMap.Data[WriteMetricsKey]).To(Equal(expectedNewWriteMetricsValue))
-			Expect(updatedConfigMap.Data[WriteMetricsKey]).NotTo(Equal(configMap.Data[WriteMetricsKey]))
-		})
-
-		It("should update the PromxyServerGroup when regional cluster annotation changes", func() {
-			By("reconciling regional ClusterDeployment")
-			_, err := clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterDeploymentNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			By("reconciling regional Configmap")
-			_, err = regionalClusterConfigmapReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterConfigmapNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			By("checking if PromxyServerGroup created")
-			promxyServerGroupNamespacedName := types.NamespacedName{
-				Name:      regionalClusterDeploymentNamespacedName.Name + "-metrics",
-				Namespace: defaultNamespace,
-			}
-
-			promxyServerGroup := &kofv1beta1.PromxyServerGroup{}
-			err = k8sClient.Get(ctx, promxyServerGroupNamespacedName, promxyServerGroup)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("updating cluster annotation")
-			clusterDeployment := &kcmv1beta1.ClusterDeployment{}
-			err = k8sClient.Get(ctx, regionalClusterDeploymentNamespacedName, clusterDeployment)
-			Expect(err).NotTo(HaveOccurred())
-
-			newEndpoint := "https://vmauth.example/prometheus"
-			newConfig := fmt.Sprintf(`{
-				"region": "us-east-2",
-				"clusterAnnotations": {"%s": "%s", "%s": "%s"}
-			}`, ReadMetricsAnnotation, newEndpoint,
-				KofRegionalDomainAnnotation, "new-domain.kof.example.com")
-
-			clusterDeployment.Spec.Config = &apiextensionsv1.JSON{Raw: []byte(newConfig)}
-			err = k8sClient.Update(ctx, clusterDeployment)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("reconciling regional ClusterDeployment")
-			_, err = clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterDeploymentNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			By("reconciling regional cluster configmap")
-			_, err = regionalClusterConfigmapReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterConfigmapNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			By("checking if PromxyServerGroup is updated")
-			updatedPromxySeverGroup := &kofv1beta1.PromxyServerGroup{}
-			err = k8sClient.Get(ctx, promxyServerGroupNamespacedName, updatedPromxySeverGroup)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(updatedPromxySeverGroup.Spec.Targets).NotTo(Equal(promxyServerGroup.Spec.Targets))
-		})
-
-		It("should create the RegionalClusterConfigMap", func() {
-			By("reconciling regional ClusterDeployment")
-			_, err := clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterDeploymentNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			By("checking if GrafanaDashboard created")
-			configMapNamespacedName := types.NamespacedName{
-				Name:      "kof-" + regionalClusterDeploymentName,
-				Namespace: defaultNamespace,
-			}
-			configMap := &corev1.ConfigMap{}
-			err = k8sClient.Get(ctx, configMapNamespacedName, configMap)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(configMap.ObjectMeta.Labels[utils.KofGeneratedLabel]).To(Equal("true"))
-			Expect(configMap.Data[RegionalClusterNameKey]).To(Equal(regionalClusterDeploymentName))
-			Expect(configMap.Data[RegionalClusterNamespaceKey]).To(Equal(defaultNamespace))
-			Expect(configMap.Data[ReadMetricsKey]).To(Equal("https://vmauth.test-aws-ue2.kof.example.com/vm/select/0/prometheus"))
-			Expect(configMap.Data[WriteMetricsKey]).To(Equal("https://vmauth.test-aws-ue2.kof.example.com/vm/insert/0/prometheus/api/v1/write"))
-			Expect(configMap.Data[WriteLogsKey]).To(Equal("https://vmauth.test-aws-ue2.kof.example.com/vli/insert/opentelemetry/v1/logs"))
-			Expect(configMap.Data[WriteTracesKey]).To(Equal("https://jaeger.test-aws-ue2.kof.example.com/collector"))
-		})
-
-		It("should update the GrafanaDatasource when regional cluster annotation changes", func() {
-			By("reconciling regional ClusterDeployment")
-			_, err := clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterDeploymentNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			By("reconciling regional cluster configmap")
-			_, err = regionalClusterConfigmapReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterConfigmapNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			By("checking if GrafanaDashboard created")
-			GrafanaDashboardNamespacedName := types.NamespacedName{
-				Name:      regionalClusterDeploymentNamespacedName.Name + "-logs",
-				Namespace: defaultNamespace,
-			}
-
-			grafanaDashboard := &grafanav1beta1.GrafanaDatasource{}
-			err = k8sClient.Get(ctx, GrafanaDashboardNamespacedName, grafanaDashboard)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("updating cluster annotation")
-			clusterDeployment := &kcmv1beta1.ClusterDeployment{}
-			err = k8sClient.Get(ctx, regionalClusterDeploymentNamespacedName, clusterDeployment)
-			Expect(err).NotTo(HaveOccurred())
-
-			newEndpoint := "https://vmauth.example-test.com/vls"
-			newConfig := fmt.Sprintf(`{
-				"region": "us-east-2",
-				"clusterAnnotations": {"%s": "%s", "%s": "%s"}
-			}`, ReadLogsAnnotation, newEndpoint,
-				KofRegionalDomainAnnotation, "new-domain.kof.example.com")
-
-			clusterDeployment.Spec.Config = &apiextensionsv1.JSON{Raw: []byte(newConfig)}
-			err = k8sClient.Update(ctx, clusterDeployment)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("reconciling regional ClusterDeployment")
-			_, err = clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterDeploymentNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			By("reconciling regional cluster configmap")
-			_, err = regionalClusterConfigmapReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterConfigmapNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			By("checking if GrafanaDashboard is updated")
-			updatedGrafanaDashboard := &grafanav1beta1.GrafanaDatasource{}
-			err = k8sClient.Get(ctx, GrafanaDashboardNamespacedName, updatedGrafanaDashboard)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(updatedGrafanaDashboard.Spec.Datasource.URL).NotTo(Equal(grafanaDashboard.Spec.Datasource.URL))
-		})
-
 		DescribeTable("should discover regional cluster by AWS region or label", func(
 			withLabel bool,
 			crossNamespace bool,
 			childNamespace string,
 			shouldSucceed bool,
 		) {
-			By("reconciling regional cluster deployment")
-			_, err := clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterDeploymentNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
 
 			By("setting CROSS_NAMESPACE environment variable")
-			err = os.Setenv("CROSS_NAMESPACE", strconv.FormatBool(crossNamespace))
+			err := os.Setenv("CROSS_NAMESPACE", strconv.FormatBool(crossNamespace))
 			Expect(err).NotTo(HaveOccurred())
-			DeferCleanup(func() {
-				err := os.Unsetenv("CROSS_NAMESPACE")
-				Expect(err).NotTo(HaveOccurred())
-			})
 
-			By("creating child ClusterDeployment without kof-regional-cluster-name label")
 			const childClusterDeploymentName = "test-child-aws"
+			const regionalClusterName = "test-regional-aws"
 
 			childClusterDeploymentNamespacedName := types.NamespacedName{
 				Name:      childClusterDeploymentName,
@@ -942,28 +705,15 @@ var _ = Describe("ClusterDeployment Controller", func() {
 				Namespace: childNamespace,
 			}
 
-			childClusterDeploymentLabels := map[string]string{
-				KofClusterRoleLabel: "child",
-				// Note no `KofRegionalClusterNameLabel` here, it will be auto-discovered!
+			regionalClusterConfigmapNamespacedName := types.NamespacedName{
+				Name:      GetRegionalClusterConfigMapName(regionalClusterName),
+				Namespace: defaultNamespace,
 			}
-			if withLabel {
-				childClusterDeploymentLabels[KofRegionalClusterNameLabel] = "test-regional"
-				if crossNamespace {
-					childClusterDeploymentLabels[KofRegionalClusterNamespaceLabel] = "default"
-				}
-			}
-
-			childClusterDeploymentAnnotations := map[string]string{}
-
-			createClusterDeployment(
-				childClusterDeploymentName,
-				childNamespace,
-				childClusterDeploymentLabels,
-				childClusterDeploymentAnnotations,
-				childClusterDeploymentConfig,
-			)
 
 			DeferCleanup(func() {
+				err := os.Unsetenv("CROSS_NAMESPACE")
+				Expect(err).NotTo(HaveOccurred())
+
 				childClusterDeployment := &kcmv1beta1.ClusterDeployment{}
 				if err := k8sClient.Get(ctx, childClusterDeploymentNamespacedName, childClusterDeployment); err == nil {
 					By("cleanup child ClusterDeployment")
@@ -975,7 +725,46 @@ var _ = Describe("ClusterDeployment Controller", func() {
 					By("cleanup child cluster ConfigMap")
 					Expect(k8sClient.Delete(ctx, configMap)).To(Succeed())
 				}
+
+				regionalClusterConfigMap := &corev1.ConfigMap{}
+				if err := k8sClient.Get(ctx, regionalClusterConfigmapNamespacedName, regionalClusterConfigMap); err == nil {
+					By("cleanup regional cluster configMap")
+					Expect(k8sClient.Delete(ctx, regionalClusterConfigMap)).To(Succeed())
+				}
 			})
+
+			By("creating child ClusterDeployment without kof-regional-cluster-name label")
+
+			childClusterDeploymentLabels := map[string]string{
+				KofClusterRoleLabel: "child",
+				// Note no `KofRegionalClusterNameLabel` here, it will be auto-discovered!
+			}
+			if withLabel {
+				childClusterDeploymentLabels[KofRegionalClusterNameLabel] = regionalClusterName
+				if crossNamespace {
+					childClusterDeploymentLabels[KofRegionalClusterNamespaceLabel] = "default"
+				}
+			}
+
+			childClusterDeploymentAnnotations := map[string]string{}
+
+			createRegionalClusterConfigMap(
+				regionalClusterName,
+				regionalClusterConfigmapNamespacedName.Namespace,
+				"", "", "",
+				"", "", "",
+				"aws",
+				"us-east-2",
+				"", "", "",
+			)
+
+			createClusterDeployment(
+				childClusterDeploymentName,
+				childNamespace,
+				childClusterDeploymentLabels,
+				childClusterDeploymentAnnotations,
+				childClusterDeploymentConfig,
+			)
 
 			By("reconciling child ClusterDeployment")
 			_, err = clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
@@ -993,7 +782,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			err = k8sClient.Get(ctx, childClusterConfigMapNamespacedName, configMap)
 			if shouldSucceed {
 				Expect(err).NotTo(HaveOccurred())
-				Expect(configMap.Data[RegionalClusterNameKey]).To(Equal("test-regional"))
+				Expect(configMap.Data[RegionalClusterNameKey]).To(Equal(regionalClusterName))
 			} else {
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("not found"))
@@ -1016,9 +805,9 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			err := k8sClient.Get(ctx, childClusterDeploymentNamespacedName, clusterDeployment)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("reconciling regional ClusterDeployment")
-			_, err = clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterDeploymentNamespacedName,
+			By("reconciling regional cluster ConfigMap")
+			_, err = regionalClusterConfigmapReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: regionalClusterConfigmapNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
 

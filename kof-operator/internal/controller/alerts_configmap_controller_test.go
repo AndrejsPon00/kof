@@ -33,7 +33,7 @@ import (
 var _ = Describe("ConfigMap controller", func() {
 	Context("when reconciling ConfigMaps", func() {
 		ctx := context.Background()
-		var controllerReconciler *ConfigMapReconciler
+		var controllerReconciler *AlertsConfigMapReconciler
 
 		const prometheusRuleName = "test-prometheus-rule"
 
@@ -49,7 +49,7 @@ var _ = Describe("ConfigMap controller", func() {
 
 		BeforeEach(func() {
 			By("creating reconciler")
-			controllerReconciler = &ConfigMapReconciler{
+			controllerReconciler = &AlertsConfigMapReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
 			}
