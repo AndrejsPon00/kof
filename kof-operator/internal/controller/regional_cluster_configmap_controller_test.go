@@ -42,6 +42,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+// const defaultNamespace = "default"
+
 var _ = Describe("RegionalConfigMap Controller", func() {
 	Context("When reconciling a resource", func() {
 		ctx := context.Background()
@@ -507,12 +509,12 @@ var _ = Describe("RegionalConfigMap Controller", func() {
 
 			promxyServerGroupNamespacedName := types.NamespacedName{
 				Name:      tableRegionalClusterDeploymentName + "-metrics",
-				Namespace: ReleaseNamespace,
+				Namespace: defaultNamespace,
 			}
 
 			grafanaDatasourceNamespacedName := types.NamespacedName{
 				Name:      tableRegionalClusterDeploymentName + "-logs",
-				Namespace: ReleaseNamespace,
+				Namespace: defaultNamespace,
 			}
 
 			secretName := tableRegionalClusterDeploymentName + "-kubeconfig"
@@ -552,6 +554,7 @@ var _ = Describe("RegionalConfigMap Controller", func() {
 				}
 
 				promxyServerGroup := &kofv1beta1.PromxyServerGroup{}
+
 				if err := k8sClient.Get(ctx, promxyServerGroupNamespacedName, promxyServerGroup); err == nil {
 					By("cleanup PromxyServerGroup")
 					Expect(k8sClient.Delete(ctx, promxyServerGroup)).To(Succeed())
