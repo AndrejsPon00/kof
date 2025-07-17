@@ -40,6 +40,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -75,16 +76,6 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			"region": "us-east-2",
 			"clusterAnnotations": {"%s": "%s"}
 		}`, KofRegionalDomainAnnotation, "test-aws-ue2.kof.example.com")
-
-		promxyServerGroupNamespacedName := types.NamespacedName{
-			Name:      regionalClusterDeploymentName + "-metrics",
-			Namespace: defaultNamespace,
-		}
-
-		grafanaDatasourceNamespacedName := types.NamespacedName{
-			Name:      regionalClusterDeploymentName + "-logs",
-			Namespace: defaultNamespace,
-		}
 
 		// child ClusterDeployment
 
@@ -122,11 +113,6 @@ var _ = Describe("ClusterDeployment Controller", func() {
 		}
 
 		const secretName = "test-child-kubeconfig"
-
-		kubeconfigSecretNamespacedName := types.NamespacedName{
-			Name:      secretName,
-			Namespace: defaultNamespace,
-		}
 
 		remoteSecretNamespacedName := types.NamespacedName{
 			Name:      remotesecret.GetRemoteSecretName(childClusterDeploymentName),
@@ -250,59 +236,47 @@ var _ = Describe("ClusterDeployment Controller", func() {
 		// after each test case
 
 		AfterEach(func() {
+			By("Cleanup ClusterDeployments")
 			cd := &kcmv1beta1.ClusterDeployment{}
+			err := k8sClient.DeleteAllOf(ctx, cd, client.InNamespace(defaultNamespace))
+			Expect(err).To(Succeed())
+			err = k8sClient.DeleteAllOf(ctx, cd, client.InNamespace(ReleaseNamespace))
+			Expect(err).To(Succeed())
 
-			if err := k8sClient.Get(ctx, regionalClusterDeploymentNamespacedName, cd); err == nil {
-				By("Cleanup regional ClusterDeployment")
-				Expect(k8sClient.Delete(ctx, cd)).To(Succeed())
-			}
-
+			By("Cleanup PromxyServerGroups")
 			promxyServerGroup := &kofv1beta1.PromxyServerGroup{}
-			if err := k8sClient.Get(ctx, promxyServerGroupNamespacedName, promxyServerGroup); err == nil {
-				By("Cleanup regional PromxyServerGroup")
-				Expect(k8sClient.Delete(ctx, promxyServerGroup)).To(Succeed())
-			}
+			err = k8sClient.DeleteAllOf(ctx, promxyServerGroup, client.InNamespace(defaultNamespace))
+			Expect(err).To(Succeed())
+			err = k8sClient.DeleteAllOf(ctx, promxyServerGroup, client.InNamespace(ReleaseNamespace))
+			Expect(err).To(Succeed())
 
-			grafanaDatasource := &grafanav1beta1.GrafanaDatasource{}
-			if err := k8sClient.Get(ctx, grafanaDatasourceNamespacedName, grafanaDatasource); err == nil {
-				By("Cleanup regional GrafanaDatasource")
-				Expect(k8sClient.Delete(ctx, grafanaDatasource)).To(Succeed())
-			}
+			By("Cleanup GrafanaDatasources")
+			grafanaDashboard := &grafanav1beta1.GrafanaDatasource{}
+			err = k8sClient.DeleteAllOf(ctx, grafanaDashboard, client.InNamespace(defaultNamespace))
+			Expect(err).To(Succeed())
+			err = k8sClient.DeleteAllOf(ctx, grafanaDashboard, client.InNamespace(ReleaseNamespace))
+			Expect(err).To(Succeed())
 
-			if err := k8sClient.Get(ctx, childClusterDeploymentNamespacedName, cd); err == nil {
-				By("Cleanup child ClusterDeployment")
-				Expect(k8sClient.Delete(ctx, cd)).To(Succeed())
-			}
+			By("Cleanup ConfigMaps")
+			cm := &corev1.ConfigMap{}
+			err = k8sClient.DeleteAllOf(ctx, cm, client.InNamespace(defaultNamespace))
+			Expect(err).To(Succeed())
+			err = k8sClient.DeleteAllOf(ctx, cm, client.InNamespace(ReleaseNamespace))
+			Expect(err).To(Succeed())
 
-			configMap := &corev1.ConfigMap{}
-			if err := k8sClient.Get(ctx, childClusterConfigMapNamespacedName, configMap); err == nil {
-				By("Cleanup child cluster ConfigMap")
-				Expect(k8sClient.Delete(ctx, configMap)).To(Succeed())
-			}
+			By("Cleanup Secrets")
+			secret := &corev1.Secret{}
+			err = k8sClient.DeleteAllOf(ctx, secret, client.InNamespace(defaultNamespace))
+			Expect(err).To(Succeed())
+			err = k8sClient.DeleteAllOf(ctx, secret, client.InNamespace(ReleaseNamespace))
+			Expect(err).To(Succeed())
 
-			kubeconfigSecret := &corev1.Secret{}
-			if err := k8sClient.Get(ctx, kubeconfigSecretNamespacedName, kubeconfigSecret); err == nil {
-				By("Cleanup the Kubeconfig Secret")
-				Expect(k8sClient.Delete(ctx, kubeconfigSecret)).To(Succeed())
-			}
-
-			remoteSecret := &corev1.Secret{}
-			if err := k8sClient.Get(ctx, remoteSecretNamespacedName, remoteSecret); err == nil {
-				By("Cleanup the Remote Secret")
-				Expect(k8sClient.Delete(ctx, remoteSecret)).To(Succeed())
-			}
-
+			By("Cleanup Certificates")
 			cert := &cmv1.Certificate{}
-			if err := k8sClient.Get(ctx, clusterCertificateNamespacedName, cert); err == nil {
-				By("Cleanup the Certificate")
-				Expect(k8sClient.Delete(ctx, cert)).To(Succeed())
-			}
-
-			regionalConfigMap := &corev1.ConfigMap{}
-			if err := k8sClient.Get(ctx, regionalClusterConfigmapNamespacedName, regionalConfigMap); err == nil {
-				By("Cleanup regional Configmap")
-				Expect(k8sClient.Delete(ctx, regionalConfigMap)).To(Succeed())
-			}
+			err = k8sClient.DeleteAllOf(ctx, cert, client.InNamespace(defaultNamespace))
+			Expect(err).To(Succeed())
+			err = k8sClient.DeleteAllOf(ctx, cert, client.InNamespace(ReleaseNamespace))
+			Expect(err).To(Succeed())
 		})
 
 		// test cases

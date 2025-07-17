@@ -25,6 +25,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	coreV1 "k8s.io/api/core/v1"
@@ -118,27 +119,19 @@ var _ = Describe("PromxyServerGroup Controller", func() {
 		})
 
 		AfterEach(func() {
+			By("Cleanup PromxyServerGroups")
 			serverGroup := &kofv1beta1.PromxyServerGroup{}
-			err := k8sClient.Get(ctx, promxyServerGroupNamespacedName, serverGroup)
-			if err == nil {
-				By("Cleanup the PromxyServerGroup")
-				Expect(k8sClient.Delete(ctx, serverGroup)).To(Succeed())
-			}
+			err := k8sClient.DeleteAllOf(ctx, serverGroup, client.InNamespace(defaultNamespace))
+			Expect(err).To(Succeed())
+			err = k8sClient.DeleteAllOf(ctx, serverGroup, client.InNamespace(ReleaseNamespace))
+			Expect(err).To(Succeed())
 
-			credentialsSecret := &coreV1.Secret{}
-			err = k8sClient.Get(ctx, credentialsSecretNamespacesName, credentialsSecret)
-			if err == nil {
-				By("Cleanup the Credentials Secret")
-				Expect(k8sClient.Delete(ctx, credentialsSecret)).To(Succeed())
-			}
-
-			promxySecret := &coreV1.Secret{}
-			err = k8sClient.Get(ctx, promxySecretNamespacedName, promxySecret)
-			if err == nil {
-				By("Cleanup the Promxy Secret")
-				Expect(k8sClient.Delete(ctx, promxySecret)).To(Succeed())
-			}
-
+			By("Cleanup Secrets")
+			secret := &coreV1.Secret{}
+			err = k8sClient.DeleteAllOf(ctx, secret, client.InNamespace(defaultNamespace))
+			Expect(err).To(Succeed())
+			err = k8sClient.DeleteAllOf(ctx, secret, client.InNamespace(ReleaseNamespace))
+			Expect(err).To(Succeed())
 		})
 
 		It("should successfully reconcile the resource if deleted", func() {

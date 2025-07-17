@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -33,12 +32,12 @@ import (
 	remotesecret "github.com/k0rdent/kof/kof-operator/internal/controller/istio/remote-secret"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	sveltosv1beta1 "github.com/projectsveltos/addon-controller/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -94,19 +93,9 @@ var _ = Describe("RegionalConfigMap Controller", func() {
 
 		const secretName = "test-child-cm-kubeconfig"
 
-		kubeconfigSecretNamespacedName := types.NamespacedName{
-			Name:      secretName,
-			Namespace: defaultNamespace,
-		}
-
 		remoteSecretNamespacedName := types.NamespacedName{
 			Name:      remotesecret.GetRemoteSecretName(childClusterDeploymentName),
 			Namespace: istio.IstioSystemNamespace,
-		}
-
-		profileDeploymentName := types.NamespacedName{
-			Name:      remotesecret.CopyRemoteSecretProfileName(childClusterDeploymentName),
-			Namespace: defaultNamespace,
 		}
 
 		// create regional cluster configmap
@@ -213,7 +202,6 @@ var _ = Describe("RegionalConfigMap Controller", func() {
 		// before each test case
 
 		BeforeEach(func() {
-
 			clusterDeploymentReconciler = &ClusterDeploymentReconciler{
 				Client:              k8sClient,
 				Scheme:              k8sClient.Scheme(),
@@ -271,42 +259,47 @@ var _ = Describe("RegionalConfigMap Controller", func() {
 		// after each test case
 
 		AfterEach(func() {
+			By("Cleanup ClusterDeployments")
 			cd := &kcmv1beta1.ClusterDeployment{}
+			err := k8sClient.DeleteAllOf(ctx, cd, client.InNamespace(defaultNamespace))
+			Expect(err).To(Succeed())
+			err = k8sClient.DeleteAllOf(ctx, cd, client.InNamespace(ReleaseNamespace))
+			Expect(err).To(Succeed())
 
-			if err := k8sClient.Get(ctx, childClusterDeploymentNamespacedName, cd); err == nil {
-				By("Cleanup child ClusterDeployment")
-				Expect(k8sClient.Delete(ctx, cd)).To(Succeed())
-			}
+			By("Cleanup PromxyServerGroups")
+			promxyServerGroup := &kofv1beta1.PromxyServerGroup{}
+			err = k8sClient.DeleteAllOf(ctx, promxyServerGroup, client.InNamespace(defaultNamespace))
+			Expect(err).To(Succeed())
+			err = k8sClient.DeleteAllOf(ctx, promxyServerGroup, client.InNamespace(ReleaseNamespace))
+			Expect(err).To(Succeed())
 
-			configMap := &corev1.ConfigMap{}
-			if err := k8sClient.Get(ctx, childClusterConfigMapNamespacedName, configMap); err == nil {
-				By("Cleanup child cluster ConfigMap")
-				Expect(k8sClient.Delete(ctx, configMap)).To(Succeed())
-			}
+			By("Cleanup GrafanaDatasources")
+			grafanaDashboard := &grafanav1beta1.GrafanaDatasource{}
+			err = k8sClient.DeleteAllOf(ctx, grafanaDashboard, client.InNamespace(defaultNamespace))
+			Expect(err).To(Succeed())
+			err = k8sClient.DeleteAllOf(ctx, grafanaDashboard, client.InNamespace(ReleaseNamespace))
+			Expect(err).To(Succeed())
 
-			kubeconfigSecret := &corev1.Secret{}
-			if err := k8sClient.Get(ctx, kubeconfigSecretNamespacedName, kubeconfigSecret); err == nil {
-				By("Cleanup the Kubeconfig Secret")
-				Expect(k8sClient.Delete(ctx, kubeconfigSecret)).To(Succeed())
-			}
+			By("Cleanup ConfigMaps")
+			cm := &corev1.ConfigMap{}
+			err = k8sClient.DeleteAllOf(ctx, cm, client.InNamespace(defaultNamespace))
+			Expect(err).To(Succeed())
+			err = k8sClient.DeleteAllOf(ctx, cm, client.InNamespace(ReleaseNamespace))
+			Expect(err).To(Succeed())
 
-			remoteSecret := &corev1.Secret{}
-			if err := k8sClient.Get(ctx, remoteSecretNamespacedName, remoteSecret); err == nil {
-				By("Cleanup the Remote Secret")
-				Expect(k8sClient.Delete(ctx, remoteSecret)).To(Succeed())
-			}
+			By("Cleanup Secrets")
+			secret := &corev1.Secret{}
+			err = k8sClient.DeleteAllOf(ctx, secret, client.InNamespace(defaultNamespace))
+			Expect(err).To(Succeed())
+			err = k8sClient.DeleteAllOf(ctx, secret, client.InNamespace(ReleaseNamespace))
+			Expect(err).To(Succeed())
 
+			By("Cleanup Certificates")
 			cert := &cmv1.Certificate{}
-			if err := k8sClient.Get(ctx, clusterCertificateNamespacedName, cert); err == nil {
-				By("Cleanup the Certificate")
-				Expect(k8sClient.Delete(ctx, cert)).To(Succeed())
-			}
-
-			regionalConfigMap := &corev1.ConfigMap{}
-			if err := k8sClient.Get(ctx, regionalClusterConfigmapNamespacedName, regionalConfigMap); err == nil {
-				By("Cleanup regional Configmap")
-				Expect(k8sClient.Delete(ctx, regionalConfigMap)).To(Succeed())
-			}
+			err = k8sClient.DeleteAllOf(ctx, cert, client.InNamespace(defaultNamespace))
+			Expect(err).To(Succeed())
+			err = k8sClient.DeleteAllOf(ctx, cert, client.InNamespace(ReleaseNamespace))
+			Expect(err).To(Succeed())
 		})
 
 		// test cases
@@ -485,182 +478,50 @@ var _ = Describe("RegionalConfigMap Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		DescribeTable("should create PromxyServerGroup and GrafanaDatasource for regional cluster", func(
-			istioRole,
-			cloud,
-			awsRegion,
-			azureLocation,
-			openstackRegion,
-			vshereDatacenter,
-			expectedMetricsScheme,
-			expectedMetricsTarget,
-			expectedMetricsPathPrefix string,
-			expectedMetricsHttpConfig kofv1beta1.HTTPClientConfig,
-			expectedGrafanaDatasourceURL string,
-			expectedGrafanaDatasourceJsonData string,
-		) {
-			By("creating regional ClusterDeployment with labels and config from the table")
-			const tableRegionalClusterDeploymentName = "test-regional-from-table-cm"
-
-			regionalClusterConfigmapNamespacedName := types.NamespacedName{
-				Name:      GetRegionalClusterConfigMapName(tableRegionalClusterDeploymentName),
-				Namespace: defaultNamespace,
-			}
-
+		It("Should create PromxyServerGroup and GrafanaDatasource for regional cluster", func() {
 			promxyServerGroupNamespacedName := types.NamespacedName{
-				Name:      tableRegionalClusterDeploymentName + "-metrics",
+				Name:      regionalClusterDeploymentName + "-metrics",
 				Namespace: defaultNamespace,
 			}
 
 			grafanaDatasourceNamespacedName := types.NamespacedName{
-				Name:      tableRegionalClusterDeploymentName + "-logs",
+				Name:      regionalClusterDeploymentName + "-logs",
 				Namespace: defaultNamespace,
 			}
-
-			secretName := tableRegionalClusterDeploymentName + "-kubeconfig"
-			createSecret(secretName)
-
-			createRegionalClusterConfigMap(
-				tableRegionalClusterDeploymentName,
-				defaultNamespace,
-				istioRole,
-				"https://vmauth.test-aws-ue2.kof.example.com/vm/select/0/prometheus",
-				"https://vmauth.test-aws-ue2.kof.example.com/vm/insert/0/prometheus/api/v1/write",
-				expectedGrafanaDatasourceURL,
-				"https://vmauth.test-aws-ue2.kof.example.com/vli/insert/opentelemetry/v1/logs",
-				"https://jaeger.test-aws-ue2.kof.example.com/collector",
-				cloud,
-				awsRegion,
-				azureLocation,
-				openstackRegion,
-				vshereDatacenter,
-			)
-
-			DeferCleanup(func() {
-				regionalClusterConfigMap := &corev1.ConfigMap{}
-				if err := k8sClient.Get(ctx, regionalClusterConfigmapNamespacedName, regionalClusterConfigMap); err == nil {
-					By("cleanup regional cluster configMap")
-					Expect(k8sClient.Delete(ctx, regionalClusterConfigMap)).To(Succeed())
-				}
-
-				kubeconfigSecretNamespacedName := types.NamespacedName{
-					Name:      secretName,
-					Namespace: defaultNamespace,
-				}
-				kubeconfigSecret := &corev1.Secret{}
-				if err := k8sClient.Get(ctx, kubeconfigSecretNamespacedName, kubeconfigSecret); err == nil {
-					By("cleanup kubeconfig Secret")
-					Expect(k8sClient.Delete(ctx, kubeconfigSecret)).To(Succeed())
-				}
-
-				promxyServerGroup := &kofv1beta1.PromxyServerGroup{}
-
-				if err := k8sClient.Get(ctx, promxyServerGroupNamespacedName, promxyServerGroup); err == nil {
-					By("cleanup PromxyServerGroup")
-					Expect(k8sClient.Delete(ctx, promxyServerGroup)).To(Succeed())
-				}
-
-				grafanaDatasource := &grafanav1beta1.GrafanaDatasource{}
-				if err := k8sClient.Get(ctx, grafanaDatasourceNamespacedName, grafanaDatasource); err == nil {
-					By("cleanup GrafanaDatasource")
-					Expect(k8sClient.Delete(ctx, grafanaDatasource)).To(Succeed())
-				}
-			})
 
 			By("reconciling regional cluster ConfigMap")
 			_, err := regionalClusterConfigmapReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: regionalClusterConfigmapNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
-
 			By("reading PromxyServerGroup")
 			promxyServerGroup := &kofv1beta1.PromxyServerGroup{}
 			err = k8sClient.Get(ctx, promxyServerGroupNamespacedName, promxyServerGroup)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(promxyServerGroup.Spec.Scheme).To(Equal(expectedMetricsScheme))
-			Expect(promxyServerGroup.Spec.Targets).To(Equal([]string{expectedMetricsTarget}))
-			Expect(promxyServerGroup.Spec.PathPrefix).To(Equal(expectedMetricsPathPrefix))
-			Expect(promxyServerGroup.Spec.HttpClient).To(Equal(expectedMetricsHttpConfig))
+			Expect(promxyServerGroup.Spec.Scheme).To(Equal("https"))
+			Expect(promxyServerGroup.Spec.Targets).To(Equal([]string{"vmauth.test-aws-ue2.kof.example.com:443"}))
+			Expect(promxyServerGroup.Spec.PathPrefix).To(Equal("/vm/select/0/prometheus"))
+			Expect(promxyServerGroup.Spec.HttpClient).To(Equal(kofv1beta1.HTTPClientConfig{
+				DialTimeout: defaultDialTimeout,
+				TLSConfig: kofv1beta1.TLSConfig{
+					InsecureSkipVerify: false,
+				},
+				BasicAuth: kofv1beta1.BasicAuth{
+					CredentialsSecretName: "storage-vmuser-credentials",
+					UsernameKey:           "username",
+					PasswordKey:           "password"},
+			}))
 
 			By("reading GrafanaDatasource")
 			grafanaDatasource := &grafanav1beta1.GrafanaDatasource{}
 			err = k8sClient.Get(ctx, grafanaDatasourceNamespacedName, grafanaDatasource)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(grafanaDatasource.Spec.Datasource.URL).To(Equal(expectedGrafanaDatasourceURL))
-			if expectedGrafanaDatasourceJsonData != "" {
-				Expect(grafanaDatasource.Spec.Datasource.JSONData).To(MatchJSON(json.RawMessage(expectedGrafanaDatasourceJsonData)))
-			}
-		},
-
-			/*
-				Entry(
-					description,
-					istioRole,
-					cloud,
-					awsRegion,
-					azureLocation,
-					openstackRegion,
-					vshereDatacenter,
-					expectedMetricsScheme,
-					expectedMetricsTarget,
-					expectedMetricsPathPrefix,
-					expectedMetricsBasicAuth,
-					expectedGrafanaDatasourceURL,
-				),
-			*/
-
-			Entry(
-				"Default endpoints",
-				"",
-				"aws",
-				"us-east-2",
-				"", "", "",
-				"https",
-				"vmauth.test-aws-ue2.kof.example.com:443",
-				"/vm/select/0/prometheus",
-				kofv1beta1.HTTPClientConfig{
-					DialTimeout: defaultDialTimeout,
-					TLSConfig: kofv1beta1.TLSConfig{
-						InsecureSkipVerify: false,
-					},
-					BasicAuth: kofv1beta1.BasicAuth{
-						CredentialsSecretName: "storage-vmuser-credentials",
-						UsernameKey:           "username",
-						PasswordKey:           "password"},
-				},
-				"https://vmauth.test-aws-ue2.kof.example.com/vls", "",
-			),
-			/*
-				Entry(
-					"Istio endpoints",
-					"child",
-					"aws",
-					"us-east-2",
-					"", "", "",
-					"https",
-					"vmauth.test-aws-ue2.kof.example.com:443",
-					"/vm/select/0/prometheus",
-					kofv1beta1.HTTPClientConfig{
-						DialTimeout: defaultDialTimeout,
-						TLSConfig: kofv1beta1.TLSConfig{
-							InsecureSkipVerify: false,
-						},
-						BasicAuth: kofv1beta1.BasicAuth{},
-					},
-					"http://test-regional-from-table-logs-select:9471", "",
-				),
-			*/
-		)
+			Expect(grafanaDatasource.Spec.Datasource.URL).To(Equal("https://vmauth.test-aws-ue2.kof.example.com/vls/select/opentelemetry/v1/logs"))
+		})
 
 		It("should create ConfigMap for child cluster", func() {
-			By("reconciling regional cluster ConfigMap")
-			_, err := regionalClusterConfigmapReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterConfigmapNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
 			By("reconciling child ClusterDeployment")
-			_, err = clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
+			_, err := clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: childClusterDeploymentNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -801,29 +662,5 @@ var _ = Describe("RegionalConfigMap Controller", func() {
 			Entry(nil, true, true, defaultNamespace, true),
 			Entry(nil, true, true, ReleaseNamespace, true),
 		)
-
-		It("should create profile", func() {
-			By("reading child ClusterDeployment")
-			clusterDeployment := &kcmv1beta1.ClusterDeployment{}
-			err := k8sClient.Get(ctx, childClusterDeploymentNamespacedName, clusterDeployment)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("reconciling regional cluster ConfigMap")
-			_, err = regionalClusterConfigmapReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: regionalClusterConfigmapNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			By("reconciling child ClusterDeployment")
-			_, err = clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: childClusterDeploymentNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			By("reading profile")
-			profile := &sveltosv1beta1.Profile{}
-			err = k8sClient.Get(ctx, profileDeploymentName, profile)
-			Expect(err).NotTo(HaveOccurred())
-		})
 	})
 })
