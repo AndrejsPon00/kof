@@ -67,22 +67,22 @@ func TestControllers(t *testing.T) {
 
 var _ = AfterEach(func() {
 	By("Cleanup all objects")
-  objects := []client.Object{
-  	&kcmv1beta1.ClusterDeployment{},
-  	&kofv1beta1.PromxyServerGroup{},
-  	&grafanav1beta1.GrafanaDatasource{},
-  	&corev1.ConfigMap{},
-  	&corev1.Secret{},
-  	&cmv1.Certificate{},
-  	&promv1.PrometheusRule{},
-  }
-  namespaces := []string{defaultNamespace, ReleaseNamespace}
-  for _, obj := range objects {
-  	for _, ns := range namespaces {
-  		err := k8sClient.DeleteAllOf(ctx, obj, client.InNamespace(ns))
-  		Expect(err).To(Succeed())
-  	}
-  }
+	objects := []client.Object{
+		&kcmv1beta1.ClusterDeployment{},
+		&kofv1beta1.PromxyServerGroup{},
+		&grafanav1beta1.GrafanaDatasource{},
+		&corev1.ConfigMap{},
+		&corev1.Secret{},
+		&cmv1.Certificate{},
+		&promv1.PrometheusRule{},
+	}
+	namespaces := []string{defaultNamespace, ReleaseNamespace}
+	for _, obj := range objects {
+		for _, ns := range namespaces {
+			err := k8sClient.DeleteAllOf(ctx, obj, client.InNamespace(ns))
+			Expect(err).To(Succeed())
+		}
+	}
 })
 
 var _ = BeforeSuite(func() {

@@ -3,12 +3,14 @@ package controller
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	kcmv1beta1 "github.com/K0rdent/kcm/api/v1beta1"
 	"github.com/k0rdent/kof/kof-operator/internal/controller/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -53,6 +55,40 @@ func (r *RegionalClusterRole) CreateOrUpdateRegionalConfigMap() error {
 		return fmt.Errorf("failed to get config data: %v", err)
 	}
 
+	cm, err := r.GetConfigMap()
+	if err != nil {
+		return fmt.Errorf("failed to get ConfigMap: %v", err)
+	}
+
+	if cm == nil {
+		if err := r.CreateConfigMap(configData); err != nil {
+			return fmt.Errorf("failed to create ConfigMap: %v", err)
+		}
+		return nil
+	}
+
+	if err := r.UpdateConfigMap(cm, configData); err != nil {
+		return fmt.Errorf("failed to update ConfigMap: %v", err)
+	}
+
+	return nil
+}
+
+func (r *RegionalClusterRole) GetConfigMap() (*corev1.ConfigMap, error) {
+	configMap := &corev1.ConfigMap{}
+	if err := r.client.Get(r.ctx, types.NamespacedName{
+		Name:      GetRegionalClusterConfigMapName(r.clusterName),
+		Namespace: r.clusterDeployment.Namespace,
+	}, configMap); err != nil {
+		if errors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return configMap, nil
+}
+
+func (r *RegionalClusterRole) CreateConfigMap(configData *ConfigData) error {
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            GetRegionalClusterConfigMapName(r.clusterName),
@@ -66,34 +102,69 @@ func (r *RegionalClusterRole) CreateOrUpdateRegionalConfigMap() error {
 		},
 		Data: configData.ToMap(),
 	}
-	operation := "Create"
-	if err = r.client.Create(r.ctx, cm); err != nil && errors.IsAlreadyExists(err) {
-		err = r.client.Update(r.ctx, cm)
-		operation = "Update"
-	}
-	eventName := "RegionalClusterConfigMap" + operation
-	if err != nil {
+
+	if err := r.client.Create(r.ctx, cm); err != nil {
 		utils.LogEvent(
 			r.ctx,
-			eventName+"Failed",
-			fmt.Sprintf("Failed to %s RegionalClusterConfigMap", operation),
+			"ConfigMapCreationFailed",
+			"Failed to create regional cluster ConfigMap",
 			r.clusterDeployment,
 			err,
-			"configMap", cm.Name,
+			"configMapName", cm.Name,
+			"configMapNamespace", cm.Namespace,
+			"configMapData", configData,
 		)
 		return err
 	}
 
 	utils.LogEvent(
 		r.ctx,
-		eventName,
-		fmt.Sprintf("%sd RegionalClusterConfigMap", operation),
+		"ConfigMapCreated",
+		"Created regional cluster ConfigMap",
 		r.clusterDeployment,
 		nil,
-		"configMap", cm.Name,
+		"configMapName", cm.Name,
+		"configMapNamespace", cm.Namespace,
+		"configMapData", configData,
 	)
 
 	return nil
+}
+
+func (r *RegionalClusterRole) UpdateConfigMap(cm *corev1.ConfigMap, configData *ConfigData) error {
+	configDataMap := configData.ToMap()
+
+	if reflect.DeepEqual(cm.Data, configDataMap) {
+		return nil
+	}
+
+	cm.Data = configDataMap
+	if err := r.client.Update(r.ctx, cm); err != nil {
+
+		utils.LogEvent(
+			r.ctx,
+			"ConfigMapUpdateFailed",
+			"Failed to update regional cluster ConfigMap",
+			r.clusterDeployment,
+			err,
+			"configMapName", cm.Name,
+			"configMapNamespace", cm.Namespace,
+		)
+		return err
+	}
+
+	utils.LogEvent(
+		r.ctx,
+		"ConfigMapUpdated",
+		"Updated regional cluster ConfigMap",
+		r.clusterDeployment,
+		nil,
+		"configMapName", cm.Name,
+		"configMapNamespace", cm.Namespace,
+	)
+
+	return nil
+
 }
 
 func GetRegionalClusterConfigMapName(clusterName string) string {

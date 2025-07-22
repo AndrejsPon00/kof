@@ -961,5 +961,48 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			err = k8sClient.Get(ctx, profileDeploymentName, profile)
 			Expect(err).NotTo(HaveOccurred())
 		})
+
+		It("should update regional configMap on regional cluster annotation change", func() {
+			By("reading regional ClusterDeployment")
+			clusterDeployment := &kcmv1beta1.ClusterDeployment{}
+			err := k8sClient.Get(ctx, regionalClusterDeploymentNamespacedName, clusterDeployment)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("reconciling regional ClusterDeployment")
+			_, err = clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: regionalClusterDeploymentNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("checking if ConfigMap created")
+			configMap := &corev1.ConfigMap{}
+			err = k8sClient.Get(ctx, regionalClusterConfigmapNamespacedName, configMap)
+			Expect(err).NotTo(HaveOccurred())
+
+			newDomain := "new-domain.kof.example.com"
+			newConfig := fmt.Sprintf(`{
+                "region": "us-east-2",
+                "clusterAnnotations": {"%s": "%s"}
+            }`, KofRegionalDomainAnnotation, newDomain)
+
+			clusterDeployment.Spec.Config = &apiextensionsv1.JSON{Raw: []byte(newConfig)}
+			err = k8sClient.Update(ctx, clusterDeployment)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("reconciling regional ClusterDeployment")
+			_, err = clusterDeploymentReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: regionalClusterDeploymentNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("checking if regional ConfigMap is updated")
+			updatedConfigMap := &corev1.ConfigMap{}
+			err = k8sClient.Get(ctx, regionalClusterConfigmapNamespacedName, updatedConfigMap)
+
+			expectedNewWriteMetricsValue := fmt.Sprintf(defaultEndpoints[WriteMetricsAnnotation], newDomain)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(updatedConfigMap.Data[WriteMetricsKey]).To(Equal(expectedNewWriteMetricsValue))
+			Expect(updatedConfigMap.Data[WriteMetricsKey]).NotTo(Equal(configMap.Data[WriteMetricsKey]))
+		})
 	})
 })

@@ -25,9 +25,7 @@ func (r *RegionalClusterConfigMapReconciler) SetupWithManager(mgr ctrl.Manager) 
 		Named("regional-cluster-config-map").
 		For(&corev1.ConfigMap{}).
 		WithEventFilter(predicate.NewPredicateFuncs(func(obj client.Object) bool {
-			labels := obj.GetLabels()
-			role, ok := labels[KofClusterRoleLabel]
-			return ok && role == KofRoleRegional
+			return obj.GetLabels()[KofClusterRoleLabel] == KofRoleRegional
 		})).
 		Complete(r)
 }
