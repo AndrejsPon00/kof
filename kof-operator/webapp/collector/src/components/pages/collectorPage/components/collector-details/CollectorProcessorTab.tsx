@@ -26,7 +26,7 @@ const CollectorProcessorTab = (): JSX.Element => {
 export default CollectorProcessorTab;
 
 const BatchStatsCard = (): JSX.Element => {
-  const { metricsHistory, selectedCollector: col } = useCollectorMetricsState();
+  const { metricsHistory, selectedPod: col } = useCollectorMetricsState();
   const { timePeriod } = useTimePeriod();
 
   if (!col) {
@@ -97,7 +97,7 @@ const BatchStatsCard = (): JSX.Element => {
 };
 
 const ItemFlowCard = (): JSX.Element => {
-  const { metricsHistory, selectedCollector: col } = useCollectorMetricsState();
+  const { metricsHistory, selectedPod: col } = useCollectorMetricsState();
   const { timePeriod } = useTimePeriod();
 
   if (!col) {

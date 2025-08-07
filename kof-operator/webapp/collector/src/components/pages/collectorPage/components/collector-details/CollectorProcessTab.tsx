@@ -25,7 +25,7 @@ const CollectorProcessTab = (): JSX.Element => {
 export default CollectorProcessTab;
 
 const UptimeCard = (): JSX.Element => {
-  const { selectedCollector: collector } = useCollectorMetricsState();
+  const { selectedPod: collector } = useCollectorMetricsState();
 
   if (!collector) {
     return <></>;
@@ -57,7 +57,7 @@ const UptimeCard = (): JSX.Element => {
 };
 
 const MemoryStatsCard = (): JSX.Element => {
-  const { metricsHistory, selectedCollector: col } = useCollectorMetricsState();
+  const { metricsHistory, selectedPod: col } = useCollectorMetricsState();
   const { timePeriod } = useTimePeriod();
 
   if (!col) {
@@ -116,7 +116,7 @@ const MemoryStatsCard = (): JSX.Element => {
 };
 
 const FileStatsCard = (): JSX.Element => {
-  const { selectedCollector: col } = useCollectorMetricsState();
+  const { selectedPod: col } = useCollectorMetricsState();
 
   if (!col) {
     return <></>;

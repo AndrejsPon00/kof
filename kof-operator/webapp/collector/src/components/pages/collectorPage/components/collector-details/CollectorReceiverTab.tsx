@@ -22,7 +22,7 @@ const CollectorReceiverTab = (): JSX.Element => {
 export default CollectorReceiverTab;
 
 const AcceptedRecordsCard = (): JSX.Element => {
-  const { metricsHistory, selectedCollector: col } = useCollectorMetricsState();
+  const { metricsHistory, selectedPod: col } = useCollectorMetricsState();
   const { timePeriod } = useTimePeriod();
 
   if (!col) {
@@ -70,7 +70,7 @@ const AcceptedRecordsCard = (): JSX.Element => {
 };
 
 const RefusedRecordsCard = (): JSX.Element => {
-  const { metricsHistory, selectedCollector: col } = useCollectorMetricsState();
+  const { metricsHistory, selectedPod: col } = useCollectorMetricsState();
   const { timePeriod } = useTimePeriod();
 
   if (!col) {

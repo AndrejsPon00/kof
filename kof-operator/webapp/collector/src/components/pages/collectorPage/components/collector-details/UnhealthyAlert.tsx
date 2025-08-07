@@ -5,17 +5,17 @@ import { JSX } from "react";
 import { useCollectorMetricsState } from "@/providers/collectors_metrics/CollectorsMetricsProvider";
 
 const UnhealthyAlert = (): JSX.Element => {
-  const { selectedCollector } = useCollectorMetricsState();
+  const { selectedPod: selectedCollector } = useCollectorMetricsState();
 
   if (!selectedCollector || selectedCollector.isHealthy) {
     return <></>;
   }
 
   const alertMessage = selectedCollector.getStringMetric(
-    METRICS.OTELCOL_CONDITION_READY_MESSAGE
+    METRICS.CONDITION_READY_MESSAGE
   );
   const alertReason = selectedCollector.getStringMetric(
-    METRICS.OTELCOL_CONDITION_READY_REASON
+    METRICS.CONDITION_READY_REASON
   );
 
   return (

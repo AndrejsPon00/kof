@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 
 const CollectorContentHeader = (): JSX.Element => {
   const navigate = useNavigate();
-  const { selectedCollector } = useCollectorMetricsState();
+  const { selectedPod: selectedCollector } = useCollectorMetricsState();
 
   if (!selectedCollector) {
     return <></>;

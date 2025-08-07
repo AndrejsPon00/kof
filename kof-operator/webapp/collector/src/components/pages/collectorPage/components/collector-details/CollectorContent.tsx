@@ -17,9 +17,9 @@ import { useNavigate } from "react-router-dom";
 
 const CollectorContent = (): JSX.Element => {
   const {
-    setSelectedCollector,
+    setSelectedPod: setSelectedCollector,
     setSelectedCluster,
-    selectedCollector,
+    selectedPod: selectedCollector,
     isLoading,
     data,
   } = useCollectorMetricsState();

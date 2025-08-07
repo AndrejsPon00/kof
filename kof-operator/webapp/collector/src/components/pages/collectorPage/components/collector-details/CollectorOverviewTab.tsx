@@ -24,10 +24,10 @@ const CollectorOverviewTabContent = ({
   collector: Pod;
 }): JSX.Element => {
   const memoryUsage: number = collector.getMetric(
-    METRICS.OTELCOL_CONTAINER_RESOURCE_MEMORY_USAGE
+    METRICS.CONTAINER_RESOURCE_MEMORY_USAGE
   );
   const memoryLimit: number = collector.getMetric(
-    METRICS.OTELCOL_CONTAINER_RESOURCE_MEMORY_LIMIT
+    METRICS.CONTAINER_RESOURCE_MEMORY_LIMIT
   );
 
   const queueSize = collector.getMetric(METRICS.OTELCOL_EXPORTER_QUEUE_SIZE);
@@ -36,10 +36,10 @@ const CollectorOverviewTabContent = ({
   );
 
   const cpuUsage = collector.getMetric(
-    METRICS.OTELCOL_CONTAINER_RESOURCE_CPU_USAGE
+    METRICS.CONTAINER_RESOURCE_CPU_USAGE
   );
   const cpuLimit = collector.getMetric(
-    METRICS.OTELCOL_CONTAINER_RESOURCE_CPU_LIMIT
+    METRICS.CONTAINER_RESOURCE_CPU_LIMIT
   );
 
   return (
@@ -144,7 +144,7 @@ const QueueCard = ({
 };
 
 const MetricsStatCard = (): JSX.Element => {
-  const { metricsHistory, selectedCollector: col } = useCollectorMetricsState();
+  const { metricsHistory, selectedPod: col } = useCollectorMetricsState();
   const { timePeriod } = useTimePeriod();
 
   if (!col) {
@@ -186,7 +186,7 @@ const MetricsStatCard = (): JSX.Element => {
 };
 
 const ExportPerformanceCard = (): JSX.Element => {
-  const { metricsHistory, selectedCollector: col } = useCollectorMetricsState();
+  const { metricsHistory, selectedPod: col } = useCollectorMetricsState();
   const { timePeriod } = useTimePeriod();
 
   if (!col) {
