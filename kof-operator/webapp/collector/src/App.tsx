@@ -13,18 +13,22 @@ import { useVictoriaMetricsState } from "./providers/victoria_metrics/VictoriaMe
 import CollectorContent from "./components/pages/collectorPage/components/collector-details/CollectorContent";
 import VictoriaPage from "./components/pages/victoriaPage/VictoriaPage";
 import VictoriaDetailsPage from "./components/pages/victoriaPage/victoria-details/VictoriaDetailsPage";
-import ClusterDeploymentLayout from "./components/pages/clusterDeploymentsPage/ClusterDeploymentLayout";
-import ClusterDeploymentDetails from "./components/pages/clusterDeploymentsPage/components/details/ClusterDeploymentDetails";
-import ClusterDeploymentsList from "./components/pages/clusterDeploymentsPage/components/list/ClusterDeploymentList";
-import ClusterSummaryLayout from "./components/pages/cluster_summaries_page/ClusterSummariesLayout";
-import ClusterSummariesList from "./components/pages/cluster_summaries_page/list/ClusterSummariesList";
-import ClusterSummaryDetails from "./components/pages/cluster_summaries_page/details/ClusterSummaryDetails";
-import MultiClusterServicesLayout from "./components/pages/multi_cluster_services_page/MultiClusterServicesLayout";
-import MultiClusterServicesList from "./components/pages/multi_cluster_services_page/list/MultiClusterServicesList";
-import MultiClusterServiceDetails from "./components/pages/multi_cluster_services_page/details/MultiClusterServiceDetails";
-import StateManagementProviderLayout from "./components/pages/state_management_provider/StateManagementProviderLayout";
-import StateManagementProviderList from "./components/pages/state_management_provider/StateManagementProviderList";
-import StateManagementProviderDetails from "./components/pages/state_management_provider/StateManagementProviderDetails";
+// import ClusterDeploymentLayout from "./components/pages/clusterDeploymentsPage/ClusterDeploymentLayout";
+// import ClusterDeploymentDetails from "./components/pages/clusterDeploymentsPage/components/details/ClusterDeploymentDetails";
+// import ClusterDeploymentsList from "./components/pages/clusterDeploymentsPage/components/list/ClusterDeploymentList";
+// import ClusterSummaryLayout from "./components/pages/cluster_summaries_page/ClusterSummariesLayout";
+// import ClusterSummariesList from "./components/pages/cluster_summaries_page/list/ClusterSummariesList";
+// import ClusterSummaryDetails from "./components/pages/cluster_summaries_page/details/ClusterSummaryDetails";
+// import MultiClusterServicesLayout from "./components/pages/multi_cluster_services_page/MultiClusterServicesLayout";
+// import MultiClusterServicesList from "./components/pages/multi_cluster_services_page/list/MultiClusterServicesList";
+// import MultiClusterServiceDetails from "./components/pages/multi_cluster_services_page/details/MultiClusterServiceDetails";
+// import StateManagementProviderLayout from "./components/pages/state_management_provider/StateManagementProviderLayout";
+// import StateManagementProviderList from "./components/pages/state_management_provider/StateManagementProviderList";
+// import StateManagementProviderDetails from "./components/pages/state_management_provider/StateManagementProviderDetails";
+import { Dashboards } from "./components/builder/main";
+import DashboardLayout from "./components/pages/dashboard_page/DashboardLayout";
+import DashboardList from "./components/pages/dashboard_page/DashboardList";
+import DashboardDetails from "./components/pages/dashboard_page/DashboardDetails";
 
 function App() {
   const { fetch: fetchCollector, isLoading: collectorIsLoading } =
@@ -68,7 +72,7 @@ function App() {
               element={<VictoriaDetailsPage />}
             />
 
-            <Route
+            {/* <Route
               path="cluster-deployments"
               element={<ClusterDeploymentLayout />}
             >
@@ -104,7 +108,49 @@ function App() {
                 path=":providerName"
                 element={<StateManagementProviderDetails />}
               />
-            </Route>
+            </Route> */}
+
+            {Dashboards.map((d) => (
+              <Route
+                path={d.id}
+                element={
+                  <DashboardLayout
+                    name={d.name}
+                    id={d.id}
+                    store={d.store}
+                    icon={d.icon}
+                    details={[]}
+                  />
+                }
+              >
+                <Route
+                  index
+                  element={
+                    <DashboardList
+                      name={d.name}
+                      id={d.id}
+                      store={d.store}
+                      icon={d.icon}
+                      tableHeads={d.tableHeads}
+                      tableValue={d.tableValue}
+                      details={[]}
+                    />
+                  }
+                />
+                <Route
+                  path=":objName"
+                  element={
+                    <DashboardDetails
+                      name={d.name}
+                      id={d.id}
+                      store={d.store}
+                      icon={d.icon}
+                      details={d.details}
+                    />
+                  }
+                />
+              </Route>
+            ))}
 
             <Route path="*" element={<NoPage />} />
           </Routes>
