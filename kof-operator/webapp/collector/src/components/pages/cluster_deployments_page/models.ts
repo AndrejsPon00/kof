@@ -1,4 +1,4 @@
-import { DefaultCondition } from "@/models/DefaultConditon";
+import { DefaultCondition, DefaultStatus } from "@/models/DefaultCondition";
 import { K8sObjectData, K8sObject } from "@/models/k8sObject";
 import { K8sObjectSet } from "@/models/k8sObjectSet";
 import { ClusterConditionData, Metadata } from "@/models/ObjectMeta";
@@ -101,12 +101,12 @@ export class ClusterSpec {
   }
 }
 
-export class ClusterConfig implements ClusterConfigData {
+export class ClusterConfig {
   private _clusterAnnotation?: Record<string, string>;
   private _clusterIdentity: ClusterIdentityData;
   private _controlPlane?: ControlPlaneData;
   private _controlPlaneNumber?: number;
-  private _region: string;
+  private _region?: string;
   private _worker?: WorkerSpecData;
   private _workersNumber?: number;
 
@@ -141,7 +141,7 @@ export class ClusterConfig implements ClusterConfigData {
     return this._controlPlaneNumber;
   }
 
-  public get region(): string {
+  public get region(): string | undefined {
     return this._region;
   }
 
@@ -154,7 +154,7 @@ export class ClusterConfig implements ClusterConfigData {
   }
 }
 
-export class ClusterStatus {
+export class ClusterStatus implements DefaultStatus {
   private _conditions: DefaultCondition[];
   private _observedGeneration: number;
   private _healthyConditions: number;
@@ -193,7 +193,7 @@ export interface ClusterDeploymentData {
   metadata: Metadata;
 }
 
-interface ClusterSpecData {
+export interface ClusterSpecData {
   config: ClusterConfigData;
   template: string;
   credential: string;
@@ -202,7 +202,7 @@ interface ClusterSpecData {
   propagateCredentials?: boolean;
 }
 
-interface ClusterConfigData {
+export interface ClusterConfigData {
   clusterAnnotations?: Record<string, string>;
   clusterIdentity: ClusterIdentityData;
   region: string;

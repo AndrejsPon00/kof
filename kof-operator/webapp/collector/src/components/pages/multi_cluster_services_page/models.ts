@@ -1,7 +1,7 @@
 import { ClusterConditionData, Condition, Metadata } from "@/models/ObjectMeta";
 import { K8sObjectSet } from "@/models/k8sObjectSet";
 import { K8sObject, K8sObjectData } from "@/models/k8sObject";
-import { DefaultCondition } from "@/models/DefaultConditon";
+import { DefaultCondition, DefaultStatus } from "@/models/DefaultCondition";
 
 type MultiClusterServicesConditionType =
   | "ServicesInReadyState"
@@ -50,11 +50,11 @@ class MultiClusterServiceSpec {
 
   constructor(data: MultiClusterServiceSpecData) {
     this.clusterSelector = data.clusterSelector;
-    this.serviceSpec = data.serviceSpec
+    this.serviceSpec = data.serviceSpec;
   }
 }
 
-class MultiClusterServiceStatus {
+class MultiClusterServiceStatus implements DefaultStatus {
   public services: ServiceStatusData[] = [];
   public conditions: Condition[] = [];
   public observedGeneration?: number;

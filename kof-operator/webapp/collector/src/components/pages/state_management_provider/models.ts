@@ -1,7 +1,7 @@
 import { ClusterConditionData, Metadata } from "@/models/ObjectMeta";
 import { K8sObjectSet } from "@/models/k8sObjectSet";
 import { K8sObject, K8sObjectData } from "@/models/k8sObject";
-import { DefaultCondition } from "@/models/DefaultConditon";
+import { DefaultCondition, DefaultStatus } from "@/models/DefaultCondition";
 
 export class StateManagementProviderSet extends K8sObjectSet<StateManagementProvider> {
   protected createK8sObject(
@@ -73,7 +73,7 @@ export class StateManagementProviderSpec {
   }
 }
 
-export class StateManagementProviderStatus {
+export class StateManagementProviderStatus implements DefaultStatus {
   private _conditions: DefaultCondition[];
   private _ready: boolean;
 

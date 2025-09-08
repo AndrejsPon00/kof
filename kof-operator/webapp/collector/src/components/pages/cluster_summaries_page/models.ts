@@ -1,3 +1,4 @@
+import { DefaultStatus } from "@/models/DefaultCondition";
 import { K8sObjectData, K8sObject } from "@/models/k8sObject";
 import { K8sObjectSet } from "@/models/k8sObjectSet";
 import { Condition, Metadata } from "@/models/ObjectMeta";
@@ -65,7 +66,7 @@ export class ClusterSummarySpec {
   }
 }
 
-export class ClusterSummaryStatus {
+export class ClusterSummaryStatus implements DefaultStatus {
   private _featureSummaries: FeatureSummaries;
   private _helmReleaseSummaries: HelmReleaseSummaries;
   private _failureMessage: string | undefined;
@@ -84,6 +85,10 @@ export class ClusterSummaryStatus {
 
   public get helmReleaseSummaries(): HelmReleaseSummaries {
     return this._helmReleaseSummaries;
+  }
+
+  public get conditions(): Condition[] {
+    return this._featureSummaries.arr;
   }
 
   public get failureMessage(): string | string[] | undefined {
