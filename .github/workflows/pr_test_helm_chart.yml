@@ -71,7 +71,7 @@ jobs:
         run: npm i
       - name: Run Tests
         working-directory: ./kof-operator/webapp/collector
-        run: npm test
+        run: npm test -- --silent='passed-only'
 
   deploy:
     name: Deploy KOF & KCM
