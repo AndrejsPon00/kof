@@ -69,6 +69,8 @@ const VictoriaDetailsPage = (): JSX.Element => {
     );
   }
 
+  console.log("hello world")
+
   const podType = getVictoriaType(selectedPod.name);
 
   return (
