@@ -75,7 +75,7 @@ const VictoriaDetailsPage = (): JSX.Element => {
   }
 
   const podType = getVictoriaType(selectedPod.name);
-
+  console.log("hello world")
   return (
     <div className="flex flex-col w-full h-full p-5 space-y-8">
       <VictoriaPageHeader />
@@ -86,6 +86,7 @@ const VictoriaDetailsPage = (): JSX.Element => {
         pod={selectedPod}
         state={useVictoriaMetricsState}
       />
+
 
       <UnhealthyAlert pod={selectedPod} />
       <Tabs defaultValue="overview" className="space-y-6">
