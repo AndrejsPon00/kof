@@ -35,6 +35,13 @@ jobs:
           owner: k0rdent
           repo: kcm
           excludes: prerelease, draft
+      - id: istio_release
+        if: ${{ matrix.target == 'dev-istio' }}
+        uses: pozetroninc/github-action-get-latest-release@master
+        with:
+          owner: k0rdent
+          repo: istio
+          excludes: prerelease, draft
       - name: "[Latest Release] Checkout"
         uses: actions/checkout@v5
         with:
@@ -89,6 +96,50 @@ jobs:
           make -C kcm-repo dev-apply
           kubectl wait --for create management/kcm --timeout=10m
           kubectl patch management/kcm --type='json' -p '[{"op": "replace", "path": "/spec/providers", "value":[{"name":"projectsveltos"}]}]'
+
+      - name: "[Latest Release] Checkout Istio repository"
+        if: ${{ matrix.target == 'dev-istio' }}
+        uses: actions/checkout@v5
+        with:
+          repository: k0rdent/istio
+          ref: ${{ steps.istio_release.outputs.release }}
+          path: istio-repo
+
+      - name: "[Latest Release] Prepare Istio Helm Charts"
+        if: ${{ matrix.target == 'dev-istio' }}
+        run: |
+          make -C istio-repo cli-install
+          make -C istio-repo registry-deploy
+          make -C istio-repo helm-push
+
+      - name: "Latest Release] Create KOF namespace and add istio injection label"
+        if: ${{ matrix.target == 'dev-istio' }}
+        run: |
+          kubectl create namespace kof
+          kubectl label namespace kof istio-injection=enabled
+          
+      - name: "[Latest Release] Install Istio"
+        if: ${{ matrix.target == 'dev-istio' }}
+        run: |
+          # kubectl wait --for create crd/clusterprofiles.config.projectsveltos.io --timeout=5m
+          cd istio-repo
+
+          export ISTIO_HELM="$(realpath ./bin/helm-*)"
+
+          "$ISTIO_HELM" upgrade --create-namespace --install --wait k0rdent-istio-base ./charts/k0rdent-istio-base \
+            -n istio-system \
+            --set k0rdent-istio.repo.spec.url=http://istio-registry:8080 \
+            --set k0rdent-istio.repo.spec.type=default \
+            --set injectionNamespaces={kof}
+          "$ISTIO_HELM" upgrade --create-namespace --install --wait k0rdent-istio ./charts/k0rdent-istio \
+            -n istio-system \
+            --set operator.image.registry=docker.io/library \
+            --set operator.image.repository=istio-operator-controller \
+            --set "istiod.meshConfig.extensionProviders[0].name=otel-tracing" \
+            --set "istiod.meshConfig.extensionProviders[0].opentelemetry.port=4317" \
+            --set "istiod.meshConfig.extensionProviders[0].opentelemetry.service=kof-collectors-daemon-collector.kof.svc.cluster.local"
+
+          cd ..
       - name: "[Latest Release] Install KOF CLI"
         run: |
           make cli-install
@@ -98,13 +149,6 @@ jobs:
       - name: "[Latest Release] Push KOF Helm Charts"
         run: |
           make helm-push
-      - name: "[Latest Release] Install Istio"
-        if: ${{ matrix.target == 'dev-istio' }}
-        run: |
-          kubectl wait --for create crd/clusterprofiles.config.projectsveltos.io --timeout=5m
-          kubectl create namespace kof
-          kubectl label namespace kof istio-injection=enabled
-          make dev-istio-deploy
       - name: "[Latest Release] Deploy KOF Components"
         run: |
           make dev-operators-deploy
@@ -158,10 +202,51 @@ jobs:
       - name: "[PR] Push KOF Helm Charts"
         run: |
           make helm-push
+
+      - name: "[PR] Checkout Istio repository"
+        if: ${{ matrix.target == 'dev-istio' }}
+        uses: actions/checkout@v5
+        with:
+          repository: k0rdent/istio
+          ref: ${{ steps.istio_release.outputs.release }}
+          path: istio-repo
+
+      - name: "[PR] Prepare Istio Helm Charts"
+        if: ${{ matrix.target == 'dev-istio' }}
+        run: |
+          make -C istio-repo cli-install
+          make -C istio-repo registry-deploy
+          make -C istio-repo helm-push
+
+      - name: "[PR] Create KOF namespace and add istio injection label"
+        if: ${{ matrix.target == 'dev-istio' }}
+        run: |
+          kubectl create namespace kof
+          kubectl label namespace kof istio-injection=enabled
+
       - name: "[PR] Install Istio"
         if: ${{ matrix.target == 'dev-istio' }}
         run: |
-          make dev-istio-deploy
+          # kubectl wait --for create crd/clusterprofiles.config.projectsveltos.io --timeout=5m
+          cd istio-repo
+
+          export ISTIO_HELM="$(realpath ./bin/helm-*)"
+
+          "$ISTIO_HELM" upgrade --create-namespace --install --wait k0rdent-istio-base ./charts/k0rdent-istio-base \
+            -n istio-system \
+            --set k0rdent-istio.repo.spec.url=http://istio-registry:8080 \
+            --set k0rdent-istio.repo.spec.type=default \
+            --set injectionNamespaces={kof}
+
+          "$ISTIO_HELM" upgrade --create-namespace --install --wait k0rdent-istio ./charts/k0rdent-istio \
+            -n istio-system \
+            --set operator.image.registry=docker.io/library \
+            --set operator.image.repository=istio-operator-controller \
+            --set "istiod.meshConfig.extensionProviders[0].name=otel-tracing" \
+            --set "istiod.meshConfig.extensionProviders[0].opentelemetry.port=4317" \
+            --set "istiod.meshConfig.extensionProviders[0].opentelemetry.service=kof-collectors-daemon-collector.kof.svc.cluster.local"
+
+          cd ..
       - name: "[PR] Deploy KOF components on Mothership cluster"
         run: |
           make dev-operators-deploy
