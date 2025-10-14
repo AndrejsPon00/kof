@@ -23,6 +23,11 @@ jobs:
     name: Upgrade KOF
     runs-on: ubuntu-latest
     steps:
+      - name: "Checkout KOF repository"
+        uses: actions/checkout@v5
+        with:
+          repository: k0rdent/kof
+          ref: main
       - name: Fetch PR Ref and Checkout Repo
         uses: ./.github/actions/fetch-pr-ref
       - name: Free Disk Space (Ubuntu)
