@@ -36,7 +36,7 @@ jobs:
           go-version-file: "./go.mod"
       - name: "[Main Branch] Install KCM CLI"
         run: |
-          make kcm-repo cli-install
+          make cli-install
       - name: "[Main Branch] Create KIND kcm cluster"
         run: |
           export KIND_CONFIG_PATH=$PWD/config/kind.yaml
@@ -47,7 +47,7 @@ jobs:
             - role: control-plane
             - role: worker
           EOF
-          make kcm-repo dev-apply
+          make dev-apply
           kubectl wait --for create management/kcm --timeout=10m
           kubectl patch management/kcm --type='json' -p '[{"op": "replace", "path": "/spec/providers", "value":[{"name":"projectsveltos"}]}]'
       - name: "[Main Branch] Checkout Istio repository"
