@@ -47,7 +47,7 @@ jobs:
             - role: control-plane
             - role: worker
           EOF
-          make -C kcm-repo dev-apply
+          make kcm-repo dev-apply
           kubectl wait --for create management/kcm --timeout=10m
           kubectl patch management/kcm --type='json' -p '[{"op": "replace", "path": "/spec/providers", "value":[{"name":"projectsveltos"}]}]'
       - name: "[Main Branch] Checkout Istio repository"
