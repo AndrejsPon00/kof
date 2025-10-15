@@ -22,21 +22,27 @@ jobs:
     name: Install KOF
     runs-on: ubuntu-latest
     steps:
+      - name: "Checkout KOF repository"
+        uses: actions/checkout@v5
+        with:
+          repository: k0rdent/kof
+          ref: ${{ github.event.pull_request.head.sha }}
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
+      - name: "[PR] Setup Go"
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "kof-operator/go.mod"
       - name: "[Main Branch] Checkout KCM repository"
         uses: actions/checkout@v5
         with:
           repository: k0rdent/kcm
           ref: main
+          path: kcm-repo
           fetch-depth: 0
-      - name: "Setup Go"
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: "./go.mod"
       - name: "[Main Branch] Install KCM CLI"
         run: |
-          make cli-install
+          make -C kcm-repo cli-install
       - name: "[Main Branch] Create KIND kcm cluster"
         run: |
           export KIND_CONFIG_PATH=$PWD/config/kind.yaml
@@ -47,7 +53,7 @@ jobs:
             - role: control-plane
             - role: worker
           EOF
-          make dev-apply
+          make -C kcm-repo dev-apply
           kubectl wait --for create management/kcm --timeout=10m
           kubectl patch management/kcm --type='json' -p '[{"op": "replace", "path": "/spec/providers", "value":[{"name":"projectsveltos"}]}]'
       - name: "[Main Branch] Checkout Istio repository"
@@ -56,6 +62,7 @@ jobs:
         with:
           repository: k0rdent/istio
           ref: main
+          path: istio-repo
 
       - name: "Create namespace and add injection label"
         if: ${{ matrix.target == 'dev-istio' }}
@@ -66,15 +73,14 @@ jobs:
       - name: "[Main Branch] Prepare Istio Helm Charts"
         if: ${{ matrix.target == 'dev-istio' }}
         run: |
-          make cli-install
-          make registry-deploy
-          make helm-push
+          make -C istio-repo cli-install
+          make -C istio-repo registry-deploy
+          make -C istio-repo helm-push
 
       - name: "[Main Branch] Build Istio Operator"
         if: ${{ matrix.target == 'dev-istio' }}
         run: |
-          make istio-operator-docker-build
-          make istio-operator-docker-build
+          make -C istio-repo istio-operator-docker-build
 
       - name: "[Main Branch] Install k0rdent-istio-base Chart"
         if: ${{ matrix.target == 'dev-istio' }}
@@ -108,12 +114,6 @@ jobs:
             --set "istiod.meshConfig.extensionProviders[0].name=otel-tracing" \
             --set "istiod.meshConfig.extensionProviders[0].opentelemetry.port=4317" \
             --set "istiod.meshConfig.extensionProviders[0].opentelemetry.service=kof-collectors-daemon-collector.kof.svc.cluster.local"
-
-      - name: "Checkout KOF repository"
-        uses: actions/checkout@v5
-        with:
-          repository: k0rdent/kof
-          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: "[PR] Install KOF CLI"
         run: |
