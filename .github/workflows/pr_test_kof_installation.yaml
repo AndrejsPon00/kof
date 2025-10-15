@@ -3,7 +3,6 @@ name: Test KOF Installation on Adopted Clusters
 on:
   pull_request_target:
     types:
-      - labeled
       - opened
       - synchronize
       - reopened
@@ -23,29 +22,21 @@ jobs:
     name: Install KOF
     runs-on: ubuntu-latest
     steps:
-      - name: "Checkout KOF repository"
-        uses: actions/checkout@v5
-        with:
-          repository: k0rdent/kof
-          ref: main
-      - name: Fetch PR Ref and Checkout Repo
-        uses: ./.github/actions/fetch-pr-ref
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
-      - name: "[Latest Release] Setup Go"
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: "kof-operator/go.mod"
       - name: "[Main Branch] Checkout KCM repository"
         uses: actions/checkout@v5
         with:
           repository: k0rdent/kcm
           ref: main
-          path: kcm-repo
           fetch-depth: 0
+      - name: "Setup Go"
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "./go.mod"
       - name: "[Main Branch] Install KCM CLI"
         run: |
-          make -C kcm-repo cli-install
+          make kcm-repo cli-install
       - name: "[Main Branch] Create KIND kcm cluster"
         run: |
           export KIND_CONFIG_PATH=$PWD/config/kind.yaml
@@ -65,7 +56,6 @@ jobs:
         with:
           repository: k0rdent/istio
           ref: main
-          path: istio-repo
 
       - name: "Create namespace and add injection label"
         if: ${{ matrix.target == 'dev-istio' }}
@@ -76,14 +66,15 @@ jobs:
       - name: "[Main Branch] Prepare Istio Helm Charts"
         if: ${{ matrix.target == 'dev-istio' }}
         run: |
-          make -C istio-repo cli-install
-          make -C istio-repo registry-deploy
-          make -C istio-repo helm-push
+          make cli-install
+          make registry-deploy
+          make helm-push
 
       - name: "[Main Branch] Build Istio Operator"
         if: ${{ matrix.target == 'dev-istio' }}
         run: |
-          make -C istio-repo istio-operator-docker-build
+          make istio-operator-docker-build
+          make istio-operator-docker-build
 
       - name: "[Main Branch] Install k0rdent-istio-base Chart"
         if: ${{ matrix.target == 'dev-istio' }}
@@ -100,7 +91,7 @@ jobs:
       - name: "Wait for ServiceTemplate to become valid"
         if: ${{ matrix.target == 'dev-istio' }}
         run: |
-          until kubectl get svctmpl -A -o json | jq -e '.items[] | select(.status.valid != true)' >/dev/null; do
+          until kubectl get svctmpl -A -o json | jq -e '.items[] | select(.status.valid == true)' >/dev/null; do
             sleep 5
           done
 
@@ -109,7 +100,7 @@ jobs:
         working-directory: istio-repo
         run: |
           ISTIO_HELM="$(realpath ./bin/helm-*)"
-          "$ISTIO_HELM" upgrade --create-namespace --install --wait k0rdent-istio ./charts/k0rdent-istio \
+          "$ISTIO_HELM" upgrade --install --wait k0rdent-istio ./charts/k0rdent-istio \
             -n istio-system \
             --set cert-manager.enable=false \
             --set operator.image.registry=docker.io/library \
@@ -117,6 +108,12 @@ jobs:
             --set "istiod.meshConfig.extensionProviders[0].name=otel-tracing" \
             --set "istiod.meshConfig.extensionProviders[0].opentelemetry.port=4317" \
             --set "istiod.meshConfig.extensionProviders[0].opentelemetry.service=kof-collectors-daemon-collector.kof.svc.cluster.local"
+
+      - name: "Checkout KOF repository"
+        uses: actions/checkout@v5
+        with:
+          repository: k0rdent/kof
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: "[PR] Install KOF CLI"
         run: |
