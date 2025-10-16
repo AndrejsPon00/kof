@@ -116,6 +116,7 @@ spec:
             clusterName: {childClusterName}
             clusterNamespace: {childClusterNamespace}
           opentelemetry-kube-stack:
+            clusterName: {childClusterName}
             collectors:
               daemon:
                 hostNetwork: true
@@ -139,7 +140,7 @@ spec:
                       - file_storage/filelogsyslogreceiver
                       - file_storage/filelogk8sauditreceiver
                       - file_storage/journaldreceiver
-              clusterName: {childClusterName}
+            
             defaultCRConfig:
               env:
                 - name: KOF_VM_USER
