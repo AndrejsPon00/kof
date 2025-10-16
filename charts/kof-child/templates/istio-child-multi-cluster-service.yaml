@@ -83,6 +83,16 @@ spec:
             collectors:
               controller-k0s:
                 enabled: false
+              daemon:
+                hostNetwork: false
+                config:
+                  service:
+                    extensions:
+                      - k8s_observer
+                      - file_storage/filelogreceiver
+                      - file_storage/filelogsyslogreceiver
+                      - file_storage/filelogk8sauditreceiver
+                      - file_storage/journaldreceiver
             clusterName: {childClusterName}
             defaultCRConfig:
               config:
@@ -117,24 +127,24 @@ spec:
           ` | replace "{childClusterName}" .Cluster.metadata.name | replace "{childClusterNamespace}" .Cluster.metadata.namespace | replace "{regionalClusterName}" $regionalClusterName | fromYaml {{`}}`}}
           {{`{{`}} $globalValuesFromHelm := `{{ $globalValues | toYaml | nindent 10 }}` | fromYaml {{`}}`}}
           {{`{{ mergeOverwrite (dict) $globalValuesFromHelm $collectorsValuesHere $collectorsValuesFromHelm $collectorsValuesFromAnnotation | toYaml | nindent 4 }}`}}
-  templateResourceRefs:
-    - identifier: ChildConfig
-      resource:
-        apiVersion: v1
-        kind: ConfigMap
-        name: kof-cluster-config-{{`{{ .Cluster.metadata.name }}`}}
-        namespace: "{{`{{ .Cluster.metadata.namespace }}`}}"
-    - identifier: ChildKCMCluster
-      optional: true
-      resource:
-        apiVersion: cluster.x-k8s.io/v1beta1
-        kind: Cluster
-        name: "{{`{{ .Cluster.metadata.name }}`}}"
-        namespace: "{{`{{ .Cluster.metadata.namespace }}`}}"
-    - identifier: ChildSveltosCluster
-      optional: true
-      resource:
-        apiVersion: lib.projectsveltos.io/v1beta1
-        kind: SveltosCluster
-        name: "{{`{{ .Cluster.metadata.name }}`}}"
-        namespace: "{{`{{ .Cluster.metadata.namespace }}`}}"
+    templateResourceRefs:
+      - identifier: ChildConfig
+        resource:
+          apiVersion: v1
+          kind: ConfigMap
+          name: kof-cluster-config-{{`{{ .Cluster.metadata.name }}`}}
+          namespace: "{{`{{ .Cluster.metadata.namespace }}`}}"
+      - identifier: ChildKCMCluster
+        optional: true
+        resource:
+          apiVersion: cluster.x-k8s.io/v1beta1
+          kind: Cluster
+          name: "{{`{{ .Cluster.metadata.name }}`}}"
+          namespace: "{{`{{ .Cluster.metadata.namespace }}`}}"
+      - identifier: ChildSveltosCluster
+        optional: true
+        resource:
+          apiVersion: lib.projectsveltos.io/v1beta1
+          kind: SveltosCluster
+          name: "{{`{{ .Cluster.metadata.name }}`}}"
+          namespace: "{{`{{ .Cluster.metadata.namespace }}`}}"

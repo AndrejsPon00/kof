@@ -44,14 +44,18 @@ make helm-push
 ```bash
 helm upgrade --create-namespace --install --wait k0rdent-istio-base ./charts/k0rdent-istio-base \
   -n istio-system \
+  --set k0rdent-istio.repo.spec.url=http://istio-registry:8080 \
+  --set k0rdent-istio.repo.spec.type=default \
   --set injectionNamespaces={kof}
 ```
 
 5. Install `k0rdent-istio` with the following values:
 
 ```bash
-helm upgrade --create-namespace --install --wait k0rdent-istio ./charts/k0rdent-istio \
+helm upgrade --install --wait k0rdent-istio ./charts/k0rdent-istio \
   -n istio-system \
+  --set operator.image.registry=docker.io/library \
+  --set operator.image.repository=istio-operator-controller \
   --set "istiod.meshConfig.extensionProviders[0].name=otel-tracing" \
   --set "istiod.meshConfig.extensionProviders[0].opentelemetry.port=4317" \
   --set "istiod.meshConfig.extensionProviders[0].opentelemetry.service=kof-collectors-daemon-collector.kof.svc.cluster.local"
