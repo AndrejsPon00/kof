@@ -80,6 +80,7 @@ spec:
             clusterName: {childClusterName}
             clusterNamespace: {childClusterNamespace}
           opentelemetry-kube-stack:
+            clusterName: {childClusterName}
             collectors:
               controller-k0s:
                 enabled: false
@@ -93,7 +94,6 @@ spec:
                       - file_storage/filelogsyslogreceiver
                       - file_storage/filelogk8sauditreceiver
                       - file_storage/journaldreceiver
-            clusterName: {childClusterName}
             defaultCRConfig:
               config:
                 processors:
