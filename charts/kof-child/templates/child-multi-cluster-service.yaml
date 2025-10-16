@@ -119,18 +119,19 @@ spec:
             clusterName: {childClusterName}
             collectors:
               daemon:
-                hostNetwork: true
                 config:
+                  receivers:
+                    prometheus:
+                      api_server:
+                        server_config:
+                          endpoint: ${env:OTEL_K8S_NODE_IP}:9090
+                    otlp:
+                      protocols:
+                        grpc:
+                          endpoint: 127.0.0.1:4317
+                        http:
+                          endpoint: 127.0.0.1:4318
                   service:
-                    telemetry:
-                      metrics:
-                        address: ${env:OTEL_K8S_NODE_IP}:8888
-                        readers:
-                          - pull:
-                              exporter:
-                                prometheus:
-                                  host: ${env:OTEL_K8S_NODE_IP}
-                                  port: 8888
                     extensions:
                       - basicauth/metrics
                       - basicauth/logs
@@ -140,7 +141,22 @@ spec:
                       - file_storage/filelogsyslogreceiver
                       - file_storage/filelogk8sauditreceiver
                       - file_storage/journaldreceiver
-            
+                    telemetry:
+                      metrics:
+                        address: ${env:OTEL_K8S_NODE_IP}:8888
+                        readers:
+                          - pull:
+                              exporter:
+                                prometheus:
+                                  host: ${env:OTEL_K8S_NODE_IP}
+                                  port: 8888
+                hostNetwork: true
+                observability:
+                  metrics:
+                    disablePrometheusAnnotations: false
+                    enableMetrics: false
+                podAnnotations:
+                  prometheus.io/ip4: ${env:OTEL_K8S_NODE_IP}
             defaultCRConfig:
               env:
                 - name: KOF_VM_USER
