@@ -60,7 +60,7 @@ jobs:
         if: ${{ matrix.target == 'dev-istio' }}
         uses: actions/checkout@v5
         with:
-          repository: k0rdent/istio
+          repository: AndrejsPon00/istio
           ref: main
           path: istio-repo
 
