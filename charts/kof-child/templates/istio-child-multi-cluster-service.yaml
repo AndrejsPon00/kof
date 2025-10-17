@@ -71,6 +71,9 @@ spec:
         namespace: {{ .Release.Namespace }}
         template: kof-collectors-{{ $version }}
         templateChain: kof-collectors-{{ $version }}
+        dependsOn:
+          - name: kof-operators
+            namespace: {{ .Release.Namespace }}
         values: |
           {{`{{ $regionalClusterName := getField "ChildConfig" "data.regional_cluster_name" }}`}}
           {{`{{ $collectorsValuesFromAnnotation := index .Cluster.metadata.annotations "k0rdent.mirantis.com/kof-collectors-values" | default "{}" | fromYaml }}`}}
