@@ -207,7 +207,6 @@ dev-ms-deploy: dev kof-operator-docker-build ## Deploy `kof-mothership` helm cha
 	} || true
 	@$(call set_local_registry, "dev/mothership-values.yaml")
 	$(KUBECTL) apply -f ./kof-operator/config/crd/bases/k0rdent.mirantis.com_servicetemplates.yaml
-	$(KUBECTL) apply -f ./kof-operator/config/crd/bases/k0rdent.mirantis.com_multiclusterservices.yaml
 	$(KUBECTL) apply -f ./kof-operator/config/crd/bases/k0rdent.mirantis.com_clusterdeployments.yaml
 	$(KUBECTL) delete deployment kof-mothership-promxy -n kof --ignore-not-found=true
 	$(HELM_UPGRADE) --take-ownership -n kof kof-mothership ./charts/kof-mothership -f dev/mothership-values.yaml
