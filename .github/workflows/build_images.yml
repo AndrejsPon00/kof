@@ -49,6 +49,9 @@ jobs:
         run: |
           GIT_VERSION=$(git describe --tags --always)
           echo "version=${GIT_VERSION}" >> $GITHUB_OUTPUT
+      - name: Set lowercase repository name
+        id: repo
+        run: echo "repo=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
       - name: Build
         uses: goreleaser/goreleaser-action@v6
         with:
