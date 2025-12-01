@@ -1,0 +1,23 @@
+name: Patch kind config
+description: |
+  Patch kind config to add registry mirror with authentication.
+runs:
+  using: composite
+  steps:
+    - name: Patch kind config for registry mirror
+      run: |
+        KIND_CONFIG_PATH=$PWD/config/kind.yaml
+        cat <<EOF > patches.yaml
+        containerdConfigPatches:
+          - |
+            [plugins."io.containerd.grpc.v1.cri".registry]
+              [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+                [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+                  endpoint = ["registry.ci.mirantis.com/dockerhub/v2/"]
+              [plugins."io.containerd.grpc.v1.cri".registry.configs]
+                [plugins."io.containerd.grpc.v1.cri".registry.configs."registry.ci.mirantis.com".auth]
+                  username = "${{ secrets.REGISTRY_CI_USERNAME }}"
+                  password = "${{ secrets.REGISTRY_CI_PASSWORD }}"
+        EOF
+        sed -i '/apiVersion: kind.x-k8s.io\/v1alpha4/r patches.yaml' ${KIND_CONFIG_PATH}
+        rm patches.yaml

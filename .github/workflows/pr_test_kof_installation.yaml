@@ -44,6 +44,8 @@ jobs:
       - name: "[Main Branch] Install KCM CLI"
         run: |
           make -C kcm-repo cli-install
+      - name: Patch Kind Config for KCM Upgrade
+        uses: ./.github/actions/kind-cluster-setup
       - name: "[Main Branch] Create KIND kcm cluster"
         run: |
           make kcm-dev-apply KCM_REPO_PATH="kcm-repo" KIND_CONFIG_PATH="$PWD/config/kind.yaml"
@@ -102,6 +104,8 @@ jobs:
         run: |
           make dev-operators-deploy
           make dev-ms-deploy
+      - name: Patch Kind Config for KCM Upgrade
+        uses: ./.github/actions/kind-cluster-setup
       - name: "[PR] Run KIND kof Regional cluster"
         run: |
           make dev-adopted-deploy KIND_CLUSTER_NAME=regional-adopted KIND_CONFIG_PATH=$PWD/config/kind.yaml
