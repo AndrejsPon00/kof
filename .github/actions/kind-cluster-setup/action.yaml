@@ -1,12 +1,27 @@
 name: Patch kind config
-description: |
-  Patch kind config to add registry mirror with authentication.
+description: Patch kind config to add registry mirror with authentication.
+inputs:
+  kind_config_path:
+    description: 'Path to the kind config file'
+    required: false
+    default: $PWD/config/kind.yaml
+  registry-username:
+    description: Username for registry
+    required: true
+  registry-password:
+    description: Password for registry
+    required: true
+
 runs:
   using: composite
   steps:
     - name: Patch kind config for registry mirror
+      env:
+        REGISTRY_USERNAME: ${{ inputs.registry-username }}
+        REGISTRY_PASSWORD: ${{ inputs.registry-password }}
+      shell: bash
       run: |
-        KIND_CONFIG_PATH=$PWD/config/kind.yaml
+        KIND_CONFIG_PATH="${{ inputs.kind_config_path }}"
         cat <<EOF > patches.yaml
         containerdConfigPatches:
           - |
@@ -16,8 +31,12 @@ runs:
                   endpoint = ["registry.ci.mirantis.com/dockerhub/v2/"]
               [plugins."io.containerd.grpc.v1.cri".registry.configs]
                 [plugins."io.containerd.grpc.v1.cri".registry.configs."registry.ci.mirantis.com".auth]
-                  username = "${{ secrets.REGISTRY_CI_USERNAME }}"
-                  password = "${{ secrets.REGISTRY_CI_PASSWORD }}"
+                  username = "$REGISTRY_USERNAME"
+                  password = "$REGISTRY_PASSWORD"
         EOF
-        sed -i '/apiVersion: kind.x-k8s.io\/v1alpha4/r patches.yaml' ${KIND_CONFIG_PATH}
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          sed -i '' '/apiVersion: kind.x-k8s.io\/v1alpha4/r patches.yaml' ${KIND_CONFIG_PATH}
+        else
+          sed -i '/apiVersion: kind.x-k8s.io\/v1alpha4/r patches.yaml' ${KIND_CONFIG_PATH}
+        fi
         rm patches.yaml

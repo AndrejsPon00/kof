@@ -80,6 +80,10 @@ jobs:
           key: kcm-cli-${{ runner.os }}-${{ steps.kcm_release.outputs.release }}-${{ github.run_id }}
       - name: Patch Kind Config for KCM Upgrade
         uses: ./.github/actions/kind-cluster-setup
+        with:
+          registry-username: ${{ secrets.REGISTRY_CI_USERNAME }}
+          registry-password: ${{ secrets.REGISTRY_CI_PASSWORD }}
+
       - name: "[Latest release] Create KIND kcm cluster"
         run: |
           export KIND_CONFIG_PATH=$PWD/config/kind.yaml
@@ -115,6 +119,9 @@ jobs:
 
       - name: Patch Kind Config for KCM Upgrade
         uses: ./.github/actions/kind-cluster-setup
+        with:
+          registry-username: ${{ secrets.REGISTRY_CI_USERNAME }}
+          registry-password: ${{ secrets.REGISTRY_CI_PASSWORD }}
 
       - name: "[Latest Release] Run KIND kof Regional cluster"
         run: |
@@ -178,6 +185,9 @@ jobs:
           make dev-ms-deploy
       - name: Patch Kind Config for KCM Upgrade
         uses: ./.github/actions/kind-cluster-setup
+        with:
+          registry-username: ${{ secrets.REGISTRY_CI_USERNAME }}
+          registry-password: ${{ secrets.REGISTRY_CI_PASSWORD }}
       - name: "[PR] Run KIND kof Regional cluster"
         run: |
           make dev-adopted-deploy KIND_CLUSTER_NAME=regional-adopted KIND_CONFIG_PATH=$PWD/config/kind.yaml
