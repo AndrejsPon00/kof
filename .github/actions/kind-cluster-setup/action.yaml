@@ -16,9 +16,6 @@ runs:
   using: composite
   steps:
     - name: Patch kind config for registry mirror
-      env:
-        REGISTRY_USERNAME: ${{ inputs.registry-username }}
-        REGISTRY_PASSWORD: ${{ inputs.registry-password }}
       shell: bash
       run: |
         KIND_CONFIG_PATH="${{ inputs.kind_config_path }}"
@@ -31,8 +28,8 @@ runs:
                   endpoint = ["registry.ci.mirantis.com/dockerhub/v2/"]
               [plugins."io.containerd.grpc.v1.cri".registry.configs]
                 [plugins."io.containerd.grpc.v1.cri".registry.configs."registry.ci.mirantis.com".auth]
-                  username = "$REGISTRY_USERNAME"
-                  password = "$REGISTRY_PASSWORD"
+                  username = ${{ inputs.registry-username }}
+                  password = ${{ inputs.registry-password }}
         EOF
         if [[ "$OSTYPE" == "darwin"* ]]; then
           sed -i '' '/apiVersion: kind.x-k8s.io\/v1alpha4/r patches.yaml' ${KIND_CONFIG_PATH}
