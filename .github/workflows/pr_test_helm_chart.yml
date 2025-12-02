@@ -113,8 +113,8 @@ jobs:
       - name: Patch Kind Config for KCM Upgrade
         uses: ./.github/actions/kind-cluster-setup
         with:
-          registry-username: ${{ secrets.REGISTRY_CI_USERNAME }}
-          registry-password: ${{ secrets.REGISTRY_CI_PASSWORD }}
+          registry-username: ${{ secrets.TEST_SECRET }}
+          registry-password: ${{ secrets.TEST_SECRET_2 }}
       - name: Apply KCM Dev Configuration
         run: |
           export KIND_CONFIG_PATH=$PWD/config/kind.yaml
