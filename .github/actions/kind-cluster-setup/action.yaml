@@ -25,11 +25,11 @@ runs:
             [plugins."io.containerd.grpc.v1.cri".registry]
               [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
                 [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
-                  endpoint = ["registry.ci.mirantis.com/dockerhub/v2/"]
+                  endpoint = ["https://registry.ci.mirantis.com/dockerhub/"]
               [plugins."io.containerd.grpc.v1.cri".registry.configs]
                 [plugins."io.containerd.grpc.v1.cri".registry.configs."registry.ci.mirantis.com".auth]
-                  username = ${{ inputs.registry-username }}
-                  password = ${{ inputs.registry-password }}
+                  username = "${{ inputs.registry-username }}"
+                  password = "${{ inputs.registry-password }}"
         EOF
         if [[ "$OSTYPE" == "darwin"* ]]; then
           sed -i '' '/apiVersion: kind.x-k8s.io\/v1alpha4/r patches.yaml' ${KIND_CONFIG_PATH}
