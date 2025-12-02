@@ -78,7 +78,8 @@ jobs:
         with:
           path: kcm-repo/bin
           key: kcm-cli-${{ runner.os }}-${{ steps.kcm_release.outputs.release }}-${{ github.run_id }}
-      - name: Patch Kind Config for KCM Upgrade
+      - name: Patch Kind Config for KCM Cluster
+        if: github.repository_owner == 'k0rdent'
         uses: ./.github/actions/kind-cluster-setup
         with:
           registry-username: ${{ secrets.TEST_SECRET }}
@@ -117,7 +118,8 @@ jobs:
           make dev-adopted-rm KIND_CLUSTER_NAME=child-adopted
           make dev-adopted-rm KIND_CLUSTER_NAME=regional-adopted
 
-      - name: Patch Kind Config for KCM Upgrade
+      - name: Patch Kind Config for KCM 
+        if: github.repository_owner == 'k0rdent'
         uses: ./.github/actions/kind-cluster-setup
         with:
           registry-username: ${{ secrets.TEST_SECRET }}
@@ -183,7 +185,8 @@ jobs:
         run: |
           make dev-operators-deploy
           make dev-ms-deploy
-      - name: Patch Kind Config for KCM Upgrade
+      - name: Patch Kind Config for KCM 
+        if: github.repository_owner == 'k0rdent'
         uses: ./.github/actions/kind-cluster-setup
         with:
           registry-username: ${{ secrets.TEST_SECRET }}

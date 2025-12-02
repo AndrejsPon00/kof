@@ -73,6 +73,7 @@ jobs:
           path: kcm-repo/bin
           key: kcm-cli-${{ runner.os }}-${{ steps.kcm_release.outputs.release }}-${{ github.run_id }}
       - name: Patch Kind Config for KCM Upgrade
+        if: github.repository_owner == 'k0rdent'
         uses: ./.github/actions/kind-cluster-setup
         with:
           registry-username: ${{ secrets.TEST_SECRET }}
